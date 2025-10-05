@@ -1,0 +1,366 @@
+/* ==================== 전역 스타일 ==================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --bg-color: #f9fafb;
+    --card-bg: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* ==================== 레이아웃 ==================== */
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ==================== 헤더 ==================== */
+
+.header {
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border-radius: 12px;
+    margin-bottom: 30px;
+    box-shadow: var(--shadow-lg);
+}
+
+.logo {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+/* ==================== 섹션 ==================== */
+
+.input-section,
+.progress-section,
+.result-section {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+}
+
+section h2 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+}
+
+/* ==================== 폼 스타일 ==================== */
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* 옵션 설정 */
+.options {
+    margin: 20px 0;
+    padding: 15px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.options summary {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.options-content {
+    margin-top: 15px;
+}
+
+/* ==================== 버튼 스타일 ==================== */
+
+.btn {
+    display: inline-block;
+    padding: 14px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    width: 100%;
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--text-secondary);
+    color: white;
+}
+
+.btn-copy {
+    padding: 6px 12px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-left: 10px;
+}
+
+.btn-copy:hover {
+    opacity: 0.9;
+}
+
+/* ==================== 진행 상황 ==================== */
+
+.progress-bar-container {
+    position: relative;
+    width: 100%;
+    height: 30px;
+    background: var(--bg-color);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 15px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.current-step {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin: 15px 0;
+}
+
+/* 로그 */
+.logs-container {
+    margin-top: 30px;
+}
+
+.logs-container h3 {
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.logs {
+    background: var(--bg-color);
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+.logs p {
+    margin-bottom: 5px;
+}
+
+/* ==================== 결과 섹션 ==================== */
+
+.video-container {
+    margin: 30px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+}
+
+.video-container video {
+    width: 100%;
+    display: block;
+}
+
+.metadata-container {
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 30px 0;
+}
+
+.metadata-container h3 {
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.metadata-field {
+    margin-bottom: 20px;
+}
+
+.metadata-field strong {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.metadata-field p,
+.metadata-field textarea {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 5px;
+}
+
+.metadata-field textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+}
+
+/* 액션 버튼 */
+.actions {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.actions .btn {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* ==================== 푸터 ==================== */
+
+.footer {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* ==================== 반응형 ==================== */
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .logo {
+        font-size: 2rem;
+    }
+
+    .subtitle {
+        font-size: 1rem;
+    }
+
+    .header {
+        padding: 30px 15px;
+    }
+
+    .input-section,
+    .progress-section,
+    .result-section {
+        padding: 20px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .actions .btn {
+        width: 100%;
+    }
+}
+
+/* ==================== 애니메이션 ==================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.progress-section,
+.result-section {
+    animation: fadeIn 0.5s ease;
+}
