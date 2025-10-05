@@ -22,6 +22,7 @@ from src.video_creator import VideoCreator
 from src.youtube_metadata import YouTubeMetadataGenerator
 from src.resource_manager import ResourceManager
 from src.background_music_downloader import BackgroundMusicDownloader
+from src.sentence_generator import SentenceGenerator
 
 # 환경변수 로드
 load_dotenv()
@@ -194,19 +195,82 @@ def index():
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
-    """비디오 생성 API"""
+    """비디오 생성 API (포맷별 분기 처리)"""
     try:
         data = request.get_json()
-        sentences = data.get('sentences', [])
+        format_type = data.get('format', 'manual')  # manual, theme, other
         voice = data.get('voice', 'nova')
+        sentences = data.get('sentences', [])  # manual 포맷용
 
-        # 입력 검증
-        if not sentences or len(sentences) != 3:
-            return jsonify({'error': '3개의 문장이 필요합니다.'}), 400
+        # API 키 확인
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({'error': 'OPENAI_API_KEY가 설정되지 않았습니다.'}), 500
 
-        for sentence in sentences:
-            if not sentence.strip():
-                return jsonify({'error': '빈 문장이 있습니다.'}), 400
+        # 포맷별 문장 생성
+        if format_type == 'theme':
+            # 테마별 묶음
+            theme = data.get('theme')
+            theme_detail = data.get('theme_detail', '')
+
+            if not theme:
+                return jsonify({'error': '주제를 선택해주세요.'}), 400
+
+            # SentenceGenerator로 문장 생성
+            try:
+                sentence_gen = SentenceGenerator(api_key=api_key)
+                sentences = sentence_gen.generate_theme_sentences(theme, theme_detail)
+            except Exception as e:
+                return jsonify({'error': f'문장 생성 실패: {str(e)}'}), 500
+
+        elif format_type == 'other':
+            # 다른 포맷 (스토리 시리즈, 영화 명대사 등)
+            other_format = data.get('format')  # story, movie, pronunciation, news
+
+            try:
+                sentence_gen = SentenceGenerator(api_key=api_key)
+
+                if other_format == 'story':
+                    story_theme = data.get('story_theme', '해외 여행')
+                    story_day = int(data.get('story_day', 1))
+                    sentences = sentence_gen.generate_story_series(story_theme, story_day)
+
+                elif other_format == 'movie':
+                    sentences = sentence_gen.generate_movie_quotes()
+
+                elif other_format == 'pronunciation':
+                    sentences = sentence_gen.generate_pronunciation_sentences()
+
+                elif other_format == 'news':
+                    sentences = sentence_gen.generate_news_sentences()
+
+                else:
+                    return jsonify({'error': f'지원하지 않는 포맷입니다: {other_format}'}), 400
+
+            except Exception as e:
+                return jsonify({'error': f'문장 생성 실패: {str(e)}'}), 500
+
+        else:
+            # manual 포맷 (기존 로직)
+            # 입력 검증
+            if not sentences or len(sentences) != 3:
+                return jsonify({'error': '3개의 문장이 필요합니다.'}), 400
+
+            for sentence in sentences:
+                if not sentence.strip():
+                    return jsonify({'error': '빈 문장이 있습니다.'}), 400
+
+        # 최종 문장 검증 (모든 포맷 공통)
+        if not sentences:
+            return jsonify({'error': '문장 생성 결과가 올바르지 않습니다.'}), 500
+
+        # manual 모드는 정확히 3문장, 나머지는 3~6문장 허용
+        if format_type == 'manual':
+            if len(sentences) != 3:
+                return jsonify({'error': '3개의 문장이 필요합니다.'}), 400
+        else:
+            if len(sentences) < 3 or len(sentences) > 6:
+                return jsonify({'error': f'문장 개수가 올바르지 않습니다 ({len(sentences)}개). 3~6개여야 합니다.'}), 500
 
         # 작업 ID 생성
         task_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -225,7 +289,8 @@ def generate():
         return jsonify({
             'task_id': task_id,
             'status': 'processing',
-            'message': '비디오 생성이 시작되었습니다.'
+            'message': '비디오 생성이 시작되었습니다.',
+            'sentences': sentences  # 생성된 문장 반환 (디버깅용)
         })
 
     except Exception as e:

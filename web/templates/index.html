@@ -16,8 +16,37 @@
 
         <!-- 메인 컨텐츠 -->
         <main class="main-content">
-            <!-- 입력 폼 -->
-            <section class="input-section" id="input-section">
+            <!-- 포맷 선택 -->
+            <section class="format-selection" id="format-selection">
+                <h2>🎯 학습 포맷을 선택하세요</h2>
+
+                <div class="format-grid">
+                    <div class="format-card" data-format="manual">
+                        <div class="format-icon">📝</div>
+                        <h3>매일 3문장</h3>
+                        <p>직접 입력한 문장으로 학습</p>
+                        <button class="btn-select">선택하기</button>
+                    </div>
+
+                    <div class="format-card" data-format="theme">
+                        <div class="format-icon">🎯</div>
+                        <h3>테마별 묶음</h3>
+                        <p>AI가 주제별 대화 자동 생성</p>
+                        <button class="btn-select">선택하기</button>
+                    </div>
+
+                    <div class="format-card" data-format="other">
+                        <div class="format-icon">📚</div>
+                        <h3>다른 포맷</h3>
+                        <p>스토리 시리즈, 명대사 등</p>
+                        <button class="btn-select">선택하기</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 입력 폼 (매일 3문장) -->
+            <section class="input-section" id="manual-input" style="display: none;">
+                <button class="btn-back" onclick="showFormatSelection()">← 포맷 선택으로 돌아가기</button>
                 <h2>📝 오늘의 3문장을 입력하세요</h2>
 
                 <form id="sentence-form">
@@ -61,6 +90,115 @@
                             <div class="form-group">
                                 <label for="voice">음성 선택</label>
                                 <select id="voice" name="voice">
+                                    <option value="nova">Nova (여성, 부드러운)</option>
+                                    <option value="alloy">Alloy (중성, 명확한)</option>
+                                    <option value="shimmer">Shimmer (여성, 밝은)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit" class="btn btn-primary">
+                        🎬 영상 생성하기
+                    </button>
+                </form>
+            </section>
+
+            <!-- 입력 폼 (테마별 묶음) -->
+            <section class="input-section" id="theme-input" style="display: none;">
+                <button class="btn-back" onclick="showFormatSelection()">← 포맷 선택으로 돌아가기</button>
+                <h2>🎯 주제를 선택하세요</h2>
+
+                <form id="theme-form">
+                    <div class="form-group">
+                        <label for="theme">학습 주제</label>
+                        <select id="theme" name="theme" required>
+                            <option value="">-- 주제 선택 --</option>
+                            <option value="travel">✈️ 여행 (Travel)</option>
+                            <option value="business">💼 비즈니스 (Business)</option>
+                            <option value="daily">🏠 일상 (Daily Life)</option>
+                            <option value="restaurant">🍽️ 레스토랑 (Restaurant)</option>
+                            <option value="shopping">🛍️ 쇼핑 (Shopping)</option>
+                            <option value="health">💪 건강 (Health & Fitness)</option>
+                            <option value="hobby">🎨 취미 (Hobbies)</option>
+                            <option value="study">📚 공부 (Study)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="theme-detail">추가 설명 (선택사항)</label>
+                        <input
+                            type="text"
+                            id="theme-detail"
+                            name="theme_detail"
+                            placeholder="예: 공항에서 체크인하기, 회의 시작하기 등"
+                        >
+                    </div>
+
+                    <!-- 옵션 설정 -->
+                    <details class="options">
+                        <summary>⚙️ 옵션 설정 (선택사항)</summary>
+                        <div class="options-content">
+                            <div class="form-group">
+                                <label for="theme-voice">음성 선택</label>
+                                <select id="theme-voice" name="voice">
+                                    <option value="nova">Nova (여성, 부드러운)</option>
+                                    <option value="alloy">Alloy (중성, 명확한)</option>
+                                    <option value="shimmer">Shimmer (여성, 밝은)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit" class="btn btn-primary">
+                        🎬 AI로 영상 생성하기
+                    </button>
+                </form>
+            </section>
+
+            <!-- 입력 폼 (다른 포맷) -->
+            <section class="input-section" id="other-input" style="display: none;">
+                <button class="btn-back" onclick="showFormatSelection()">← 포맷 선택으로 돌아가기</button>
+                <h2>📚 포맷을 선택하세요</h2>
+
+                <form id="other-form">
+                    <div class="form-group">
+                        <label for="other-format">포맷 유형</label>
+                        <select id="other-format" name="other_format" required>
+                            <option value="">-- 포맷 선택 --</option>
+                            <option value="story">📖 스토리 시리즈 (Day 1-7 연결)</option>
+                            <option value="movie">🎬 영화 명대사</option>
+                            <option value="pronunciation">🗣️ 발음 집중 훈련</option>
+                            <option value="news">📰 오늘의 뉴스</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="story-options" style="display: none;">
+                        <label for="story-theme">스토리 주제</label>
+                        <input
+                            type="text"
+                            id="story-theme"
+                            name="story_theme"
+                            placeholder="예: 해외 여행 첫날"
+                        >
+                        <label for="story-day">Day (1-7)</label>
+                        <input
+                            type="number"
+                            id="story-day"
+                            name="story_day"
+                            min="1"
+                            max="7"
+                            value="1"
+                        >
+                    </div>
+
+                    <!-- 옵션 설정 -->
+                    <details class="options">
+                        <summary>⚙️ 옵션 설정 (선택사항)</summary>
+                        <div class="options-content">
+                            <div class="form-group">
+                                <label for="other-voice">음성 선택</label>
+                                <select id="other-voice" name="voice">
                                     <option value="nova">Nova (여성, 부드러운)</option>
                                     <option value="alloy">Alloy (중성, 명확한)</option>
                                     <option value="shimmer">Shimmer (여성, 밝은)</option>

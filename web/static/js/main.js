@@ -7,10 +7,16 @@ let currentTaskId = null;
 let pollingInterval = null;
 
 // DOM 요소
-const inputSection = document.getElementById('input-section');
+const formatSelection = document.getElementById('format-selection');
+const manualInput = document.getElementById('manual-input');
+const themeInput = document.getElementById('theme-input');
+const otherInput = document.getElementById('other-input');
+const inputSection = document.getElementById('input-section'); // 하위 호환성 유지
 const progressSection = document.getElementById('progress-section');
 const resultSection = document.getElementById('result-section');
 const sentenceForm = document.getElementById('sentence-form');
+const themeForm = document.getElementById('theme-form');
+const otherForm = document.getElementById('other-form');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
 const currentStepElement = document.getElementById('current-step');
@@ -182,25 +188,9 @@ function showResult(data) {
 }
 
 /**
- * UI 섹션 전환
+ * UI 섹션 전환 (레거시 함수 - 포맷 선택 섹션에서 재정의됨)
  */
-function showInputSection() {
-    inputSection.style.display = 'block';
-    progressSection.style.display = 'none';
-    resultSection.style.display = 'none';
-}
-
-function showProgressSection() {
-    inputSection.style.display = 'none';
-    progressSection.style.display = 'block';
-    resultSection.style.display = 'none';
-
-    // 초기화
-    progressBar.style.width = '0%';
-    progressText.textContent = '0%';
-    currentStepElement.textContent = '시작 중...';
-    logsElement.innerHTML = '';
-}
+// showInputSection과 showProgressSection은 파일 하단에서 재정의됩니다
 
 /**
  * 클립보드에 복사
@@ -240,7 +230,198 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// 페이지 로드 시 입력 섹션 표시
+// 페이지 로드 시 포맷 선택 표시
 window.addEventListener('DOMContentLoaded', () => {
-    showInputSection();
+    initializeFormatSelection();
 });
+
+// ==================== 포맷 선택 로직 (새로 추가) ====================
+
+/**
+ * 포맷 선택 초기화
+ */
+function initializeFormatSelection() {
+    // 포맷 카드 클릭 이벤트
+    document.querySelectorAll('.format-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const format = this.dataset.format;
+            selectFormat(format);
+        });
+    });
+
+    // 테마 폼 제출 이벤트
+    themeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const theme = document.getElementById('theme').value;
+        const themeDetail = document.getElementById('theme-detail').value.trim();
+        const voice = document.getElementById('theme-voice').value;
+
+        if (!theme) {
+            alert('주제를 선택해주세요.');
+            return;
+        }
+
+        await startThemeGeneration(theme, themeDetail, voice);
+    });
+
+    // 다른 포맷 폼 제출 이벤트
+    otherForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const otherFormat = document.getElementById('other-format').value;
+        const voice = document.getElementById('other-voice').value;
+
+        if (!otherFormat) {
+            alert('포맷을 선택해주세요.');
+            return;
+        }
+
+        const formatData = {
+            format: otherFormat,
+            voice: voice
+        };
+
+        // 스토리 시리즈인 경우 추가 데이터
+        if (otherFormat === 'story') {
+            formatData.story_theme = document.getElementById('story-theme').value.trim();
+            formatData.story_day = document.getElementById('story-day').value;
+        }
+
+        await startOtherFormatGeneration(formatData);
+    });
+
+    // 다른 포맷 선택 변경 시 스토리 옵션 표시/숨김
+    document.getElementById('other-format').addEventListener('change', function() {
+        const storyOptions = document.getElementById('story-options');
+        if (this.value === 'story') {
+            storyOptions.style.display = 'block';
+        } else {
+            storyOptions.style.display = 'none';
+        }
+    });
+
+    // 초기 화면: 포맷 선택 표시
+    showFormatSelection();
+}
+
+/**
+ * 포맷 선택
+ */
+function selectFormat(format) {
+    formatSelection.style.display = 'none';
+
+    if (format === 'manual') {
+        manualInput.style.display = 'block';
+    } else if (format === 'theme') {
+        themeInput.style.display = 'block';
+    } else if (format === 'other') {
+        otherInput.style.display = 'block';
+    }
+}
+
+/**
+ * 포맷 선택 화면 표시
+ */
+function showFormatSelection() {
+    formatSelection.style.display = 'block';
+    manualInput.style.display = 'none';
+    themeInput.style.display = 'none';
+    otherInput.style.display = 'none';
+    progressSection.style.display = 'none';
+    resultSection.style.display = 'none';
+}
+
+/**
+ * 테마별 비디오 생성 시작
+ */
+async function startThemeGeneration(theme, themeDetail, voice) {
+    try {
+        showProgressSection();
+
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                format: 'theme',
+                theme: theme,
+                theme_detail: themeDetail,
+                voice: voice,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '비디오 생성에 실패했습니다.');
+        }
+
+        const data = await response.json();
+        currentTaskId = data.task_id;
+
+        startPolling();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+        showFormatSelection();
+    }
+}
+
+/**
+ * 다른 포맷 비디오 생성 시작
+ */
+async function startOtherFormatGeneration(formatData) {
+    try {
+        showProgressSection();
+
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                format: 'other',
+                ...formatData
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '비디오 생성에 실패했습니다.');
+        }
+
+        const data = await response.json();
+        currentTaskId = data.task_id;
+
+        startPolling();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+        showFormatSelection();
+    }
+}
+
+// 기존 함수 수정: showInputSection()을 showFormatSelection()으로 변경
+function showInputSection() {
+    // 하위 호환성을 위해 유지하지만, 포맷 선택으로 리다이렉트
+    showFormatSelection();
+}
+
+// 프로그레스 섹션에서 뒤로가기 시 포맷 선택으로
+function showProgressSection() {
+    formatSelection.style.display = 'none';
+    manualInput.style.display = 'none';
+    themeInput.style.display = 'none';
+    otherInput.style.display = 'none';
+    progressSection.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    // 초기화
+    progressBar.style.width = '0%';
+    progressText.textContent = '0%';
+    currentStepElement.textContent = '시작 중...';
+    logsElement.innerHTML = '';
+}
