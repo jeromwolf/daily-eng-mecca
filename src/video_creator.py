@@ -287,6 +287,30 @@ Simple flat design with pastel colors."""
 
         return CompositeVideoClip([bg, txt], size=(self.width, self.height))
 
+    def _calculate_font_size(self, text: str) -> int:
+        """
+        텍스트 길이에 따라 동적으로 폰트 크기 계산
+
+        Args:
+            text: 표시할 텍스트 (영어 + 한글 번역 포함)
+
+        Returns:
+            적절한 폰트 크기 (px)
+        """
+        text_length = len(text)
+
+        # 텍스트 길이별 폰트 크기 (짧은 문장은 크게, 긴 문장은 작게)
+        if text_length < 50:
+            return 58  # 매우 짧은 문장 → 크게
+        elif text_length < 80:
+            return 52  # 짧은 문장
+        elif text_length < 120:
+            return 46  # 보통 길이
+        elif text_length < 160:
+            return 42  # 긴 문장 (현재 기본값)
+        else:
+            return 38  # 매우 긴 문장 → 작게 (오버플로우 방지)
+
     def _create_sentence_clip(
         self,
         image_path: str,
@@ -383,10 +407,13 @@ Simple flat design with pastel colors."""
         ).with_position(('center', 62)).with_duration(duration)
         text_clips.append(title)
 
+        # 동적 폰트 크기 계산 (텍스트 길이에 따라 자동 조정)
+        dynamic_font_size = self._calculate_font_size(combined_text)
+
         # 한글 폰트 직접 경로 지정
         txt = TextClip(
             text=combined_text,
-            font_size=42,  # 폰트 크기 줄임 (56 → 42)
+            font_size=dynamic_font_size,  # 동적 폰트 크기 적용
             color='white',
             font=korean_font,  # 나눔고딕 직접 경로
             size=(self.width - 120, None),

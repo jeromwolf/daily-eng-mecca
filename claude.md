@@ -101,6 +101,35 @@ YouTube Shorts 영어 학습 비디오 자동 생성 시스템
 - **해결**: `audio_info[i]['duration']` → `audio_info[i]['voices']['alloy']['duration']`
 - **수정 파일**: `src/video_creator.py:121`
 
+### ✅ Phase 3: 가독성 향상 (동적 폰트 크기)
+
+**문제**:
+- 폰트 크기가 고정(42px)되어 짧은 문장은 너무 작고, 긴 문장은 오버플로우 가능성
+- 사용자 요구: "글씨가 많을 경우도 생각해야되고"
+
+**구현 내용:**
+1. **동적 폰트 크기 계산**
+   - `VideoCreator._calculate_font_size()` 메서드 추가
+   - 텍스트 길이에 따라 자동 조정:
+     - < 50자: 58px (매우 짧은 문장 → 크게)
+     - 50-79자: 52px (짧은 문장)
+     - 80-119자: 46px (보통 길이)
+     - 120-159자: 42px (긴 문장, 기존 기본값)
+     - ≥ 160자: 38px (매우 긴 문장 → 작게, 오버플로우 방지)
+
+2. **_create_sentence_clip 업데이트**
+   - `combined_text` 길이 기반 폰트 크기 계산
+   - `font_size=42` (고정) → `font_size=dynamic_font_size` (동적)
+
+**수정 파일:**
+- `src/video_creator.py:290-312` - `_calculate_font_size()` 메서드 추가
+- `src/video_creator.py:410-416` - 동적 폰트 크기 적용
+
+**효과:**
+- 짧은 문장: 가독성 향상 (폰트 크기 증가)
+- 긴 문장: 오버플로우 방지 (폰트 크기 감소)
+- 텍스트 박스 크기: 960px (width) × 350px (height)
+
 ---
 
 ## 🎯 이전 작업 (2025-10-06)
