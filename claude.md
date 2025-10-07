@@ -15,7 +15,7 @@ YouTube Shorts 영어 학습 비디오 자동 생성 시스템
 - MoviePy 2.x 비디오 합성
 - Flask 웹 인터페이스
 - 인트로/아웃트로 "Daily English Mecca" 브랜딩 (gold stroke)
-- 배경 음악 (Kevin MacLeod - Carefree, 5% 볼륨)
+- 배경 음악 (Kevin MacLeod - Pixel Peeker Polka, 경쾌한 탐정 스타일, 5% 볼륨)
 - PIL 기반 이미지 회전 로직
 
 ---
