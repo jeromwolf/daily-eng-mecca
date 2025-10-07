@@ -25,7 +25,8 @@ class VideoCreator:
         audio_info: list[dict],
         output_path: str,
         image_groups: list[list[int]] = None,
-        translations: list[str] = None
+        translations: list[str] = None,
+        hook_phrase: str = None
     ) -> str:
         """
         유튜브 쇼츠 비디오 생성
@@ -37,6 +38,7 @@ class VideoCreator:
             output_path: 비디오 저장 경로
             image_groups: 각 이미지에 표시할 문장 인덱스 리스트
             translations: 한글 번역 리스트
+            hook_phrase: 인트로 훅 문구 (AI 자동 생성, 없으면 기본값)
 
         Returns:
             생성된 비디오 파일 경로
@@ -48,8 +50,8 @@ class VideoCreator:
             if image_groups is None:
                 image_groups = [[i] for i in range(len(sentences))]
 
-            # 인트로 생성 (3초)
-            intro_clip = self._create_intro_clip(duration=3)
+            # 인트로 생성 (3초, 훅 문구 포함)
+            intro_clip = self._create_intro_clip(duration=3, hook_phrase=hook_phrase)
 
             # 각 이미지에 어떤 문장들이 매핑되는지 확인
             # 각 문장마다 개별 클립을 생성 (정확한 타이밍을 위해)
@@ -64,13 +66,15 @@ class VideoCreator:
                         sentence_to_image[sent_idx] = image_paths[img_idx]
 
             # 각 문장마다 개별 클립 생성 (TTS와 정확히 동기화)
-            # 각 문장을 3번 반복
+            # 각 문장을 3번 반복 (각 반복마다 다른 음성 사용 - 학습 효과 향상)
             current_time = 3.0  # 인트로 3초 후부터 시작
-            pause_duration = 1.0  # 각 문장 사이 간격 (사용자가 따라 읽을 수 있도록)
+            pause_duration = 2.0  # 각 문장 사이 간격 (사용자가 따라 말할 시간)
             repeat_count = 3  # 각 문장을 3번 반복
+            voices_list = ['alloy', 'nova', 'shimmer']  # 각 반복마다 다른 음성
 
             for repeat in range(repeat_count):
-                print(f"\n=== {repeat + 1}회차 반복 ===")
+                current_voice = voices_list[repeat]
+                print(f"\n=== {repeat + 1}회차 반복 ({current_voice} 음성) ===")
 
                 for sent_idx in range(len(sentences)):
                     if sent_idx >= len(audio_info):
@@ -83,10 +87,11 @@ class VideoCreator:
                     sentence_text = sentences[sent_idx]
                     translation_text = translations[sent_idx] if translations and sent_idx < len(translations) else ""
 
-                    # 해당 문장의 오디오 duration + 간격
-                    clip_duration = audio_info[sent_idx]['duration'] + pause_duration
+                    # 해당 문장의 오디오 duration + 간격 (현재 음성 기준)
+                    audio_duration = audio_info[sent_idx]['voices'][current_voice]['duration']
+                    clip_duration = audio_duration + pause_duration
 
-                    print(f"  문장 {sent_idx + 1}: {audio_info[sent_idx]['duration']:.2f}초 + 간격 {pause_duration}초 = {clip_duration:.2f}초 (시작: {current_time:.2f}초)")
+                    print(f"  문장 {sent_idx + 1}: {audio_duration:.2f}초 + 간격 {pause_duration}초 = {clip_duration:.2f}초 (시작: {current_time:.2f}초)")
 
                     # 클립 생성
                     clip = self._create_sentence_clip(
@@ -98,8 +103,9 @@ class VideoCreator:
                     )
                     sentence_clips.append(clip)
 
-                    # 오디오 클립 추가 (정확한 시작 시간 설정, duration은 원본 유지)
-                    audio_clip = AudioFileClip(audio_info[sent_idx]['path']).with_start(current_time)
+                    # 오디오 클립 추가 (정확한 시작 시간 설정, 현재 음성 사용)
+                    audio_path = audio_info[sent_idx]['voices'][current_voice]['path']
+                    audio_clip = AudioFileClip(audio_path).with_start(current_time)
                     audio_clips.append(audio_clip)
 
                     current_time += clip_duration
@@ -112,7 +118,7 @@ class VideoCreator:
             final_video = concatenate_videoclips(video_clips, method="compose")
 
             # 총 비디오 길이 확인
-            sentences_duration = sum(info['duration'] for info in audio_info) * repeat_count + (pause_duration * len(audio_info) * repeat_count)
+            sentences_duration = sum(info['voices']['alloy']['duration'] for info in audio_info) * repeat_count + (pause_duration * len(audio_info) * repeat_count)
             total_duration = 3 + sentences_duration + 2
             print(f"\n총 비디오 길이: {total_duration:.2f}초")
             print(f"  - 인트로: 3.00초")
@@ -192,12 +198,13 @@ class VideoCreator:
             print(f"✗ 비디오 생성 실패: {e}")
             raise
 
-    def _create_intro_clip(self, duration: float = 3) -> VideoClip:
+    def _create_intro_clip(self, duration: float = 3, hook_phrase: str = None) -> VideoClip:
         """
-        인트로 클립 생성
+        인트로 클립 생성 (AI 자동 생성 훅 포함)
 
         Args:
             duration: 인트로 지속 시간
+            hook_phrase: AI가 생성한 바이럴 훅 문구 (없으면 기본값)
 
         Returns:
             인트로 VideoClip
@@ -258,8 +265,12 @@ Simple flat design with pastel colors."""
 
         # 텍스트 (한글 지원 폰트 - 직접 경로 지정)
         korean_font = "/System/Library/AssetsV2/com_apple_MobileAsset_Font7/bad9b4bf17cf1669dde54184ba4431c22dcad27b.asset/AssetData/NanumGothic.ttc"
+
+        # AI 생성 훅 문구 또는 기본 문구 사용
+        intro_text = hook_phrase if hook_phrase else "오늘의 3문장\nDaily English"
+
         txt = TextClip(
-            text="오늘의 3문장\nDaily English",
+            text=intro_text,
             font_size=65,  # 폰트 크기 줄임 (90 → 65)
             color='white',
             font=korean_font,  # 나눔고딕 직접 경로
@@ -462,9 +473,9 @@ Simple flat design with pastel colors."""
         # 한글 폰트 직접 경로 지정
         korean_font = "/System/Library/AssetsV2/com_apple_MobileAsset_Font7/bad9b4bf17cf1669dde54184ba4431c22dcad27b.asset/AssetData/NanumGothic.ttc"
 
-        # 메인 텍스트
+        # 메인 텍스트 (강화된 CTA)
         main_txt = TextClip(
-            text="구독하고\n매일 3문장 배우기!",
+            text="좋아요 & 구독하기!",
             font_size=58,  # 폰트 크기 줄임 (80 → 58)
             color='white',
             font=korean_font,  # 나눔고딕 직접 경로
@@ -476,9 +487,9 @@ Simple flat design with pastel colors."""
             margin=(10, 20)  # 여백 추가로 한글 깨짐 방지
         ).with_position(('center', 700)).with_duration(duration)  # 위로 조정 (750 → 700)
 
-        # 서브 텍스트 (이모지 대신 텍스트)
+        # 서브 텍스트 (댓글 유도 - 참여도 증가)
         sub_txt = TextClip(
-            text="좋아요 & 구독 & 알림 설정",
+            text="댓글에 오늘 배운 문장 써보세요!",
             font_size=38,  # 폰트 크기 줄임 (50 → 38)
             color='white',
             font=korean_font,  # 나눔고딕 직접 경로

@@ -2,6 +2,7 @@
 OpenAI GPT를 사용한 문장 자동 생성 모듈
 """
 import os
+import time
 from openai import OpenAI
 
 
@@ -14,6 +15,51 @@ class SentenceGenerator:
             api_key: OpenAI API 키 (없으면 환경변수에서 가져옴)
         """
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+
+    def _call_openai_with_retry(self, model: str, messages: list, temperature: float, max_tokens: int, max_retries: int = 3):
+        """
+        재시도 로직을 포함한 OpenAI API 호출
+
+        Args:
+            model: 모델 이름
+            messages: 메시지 리스트
+            temperature: Temperature 설정
+            max_tokens: 최대 토큰 수
+            max_retries: 최대 재시도 횟수 (기본 3회)
+
+        Returns:
+            OpenAI API 응답
+
+        Raises:
+            Exception: 모든 재시도 실패 시
+        """
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                return response
+            except Exception as e:
+                last_error = e
+                error_msg = str(e)
+
+                # 500 에러인 경우 재시도
+                if "500" in error_msg or "server" in error_msg.lower():
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 2  # 2초, 4초, 6초
+                        print(f"⚠️ OpenAI 서버 오류 발생. {wait_time}초 후 재시도 ({attempt + 1}/{max_retries})...")
+                        time.sleep(wait_time)
+                        continue
+
+                # 그 외 에러는 즉시 발생
+                raise
+
+        # 모든 재시도 실패
+        raise Exception(f"OpenAI API 호출 실패 (최대 재시도 {max_retries}회): {last_error}")
 
     def generate_theme_sentences(self, theme: str, theme_detail: str = "") -> list[str]:
         """
@@ -62,7 +108,7 @@ Output format: Return ONLY the sentences (3-6 sentences), one per line, without 
 """
 
         try:
-            response = self.client.chat.completions.create(
+            response = self._call_openai_with_retry(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are an expert English teacher for Korean learners. Generate practical, simple sentences for daily learning. Decide the optimal number of sentences (3-6) based on the topic."},
@@ -137,7 +183,7 @@ Output format: Return ONLY the sentences (3-6 sentences), one per line, without 
 """
 
         try:
-            response = self.client.chat.completions.create(
+            response = self._call_openai_with_retry(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a creative English teacher who creates engaging story-based lessons for Korean learners. Decide the optimal number of sentences (3-6) based on the story needs."},
@@ -169,46 +215,117 @@ Output format: Return ONLY the sentences (3-6 sentences), one per line, without 
             print(f"✗ 스토리 문장 생성 실패: {e}")
             raise
 
-    def generate_movie_quotes(self) -> list[str]:
+    def generate_movie_quotes(self, selected_quote_id: int = None) -> list[str]:
         """
-        유명 영화 명대사 3개 생성
+        유명 영화 명대사 3~6개 생성 (리스트 선택 방식)
+
+        Args:
+            selected_quote_id: 선택된 명대사 ID (None이면 랜덤 3개 선택)
 
         Returns:
-            생성된 3개의 영화 명대사 리스트
+            생성된 3~6개의 영화 명대사 리스트 (영화 제목 + 캐릭터 포함)
         """
-        prompt = """Generate exactly 3 famous, simple movie quotes in English.
+        import json
+        from pathlib import Path
+
+        # movie_quotes.json 로드
+        quotes_file = Path(__file__).parent / 'movie_quotes.json'
+
+        try:
+            with open(quotes_file, 'r', encoding='utf-8') as f:
+                quotes_data = json.load(f)
+                all_quotes = quotes_data['quotes']
+        except Exception as e:
+            print(f"⚠️ movie_quotes.json 로드 실패: {e}")
+            # 기본 3개 영화 명대사 반환
+            return self._generate_movie_quotes_fallback()
+
+        if selected_quote_id:
+            # 선택된 명대사 찾기
+            selected = next((q for q in all_quotes if q['id'] == selected_quote_id), None)
+
+            if not selected:
+                print(f"⚠️ ID {selected_quote_id} 명대사를 찾을 수 없습니다. 랜덤 선택합니다.")
+                import random
+                selected = random.choice(all_quotes)
+
+            # GPT로 해당 영화의 다른 명대사들 3-6개 생성
+            return self._generate_related_movie_quotes(selected)
+
+        else:
+            # 랜덤 3개 선택
+            import random
+            selected_quotes = random.sample(all_quotes, 3)
+
+            sentences = []
+            for q in selected_quotes:
+                sentence = f"{q['quote']} ({q['movie']} - {q['character']})"
+                sentences.append(sentence)
+
+            print(f"✅ 영화 명대사 랜덤 3개 선택 완료")
+            for idx, s in enumerate(sentences, 1):
+                print(f"   {idx}. {s}")
+
+            return sentences
+
+    def _generate_related_movie_quotes(self, selected_quote: dict) -> list[str]:
+        """
+        선택된 명대사와 관련된 영화 명대사들 3~6개 생성
+
+        Args:
+            selected_quote: 선택된 명대사 정보 (quote, movie, character, year)
+
+        Returns:
+            3~6개의 명대사 리스트
+        """
+        movie = selected_quote['movie']
+        character = selected_quote['character']
+        main_quote = selected_quote['quote']
+
+        prompt = f"""Generate 3 to 6 famous quotes from the movie "{movie}" for English learning.
+
+Main quote to include:
+"{main_quote}" - {character}
 
 Requirements:
-- Choose well-known, iconic movie quotes
-- Each quote should be 5-12 words long
-- Select quotes that are easy to understand for Korean learners
-- Include quotes from different movies
-- Make sure they are family-friendly
+- MUST include the main quote above as the FIRST quote
+- Add 2-5 more famous quotes from the same movie "{movie}"
+- Each quote should be 5-15 words long
+- Choose iconic, memorable quotes from the movie
+- Make them suitable for Korean English learners
+- Return 3-6 quotes total (including the main quote)
 
-Output format: Return ONLY the 3 quotes, one per line, without movie names or any other text.
+Output format: Return ONLY the quotes, one per line, in this format:
+[Quote text] ([Movie name] - [Character name])
+
+Example:
+May the Force be with you. (Star Wars - Obi-Wan Kenobi)
+I have a bad feeling about this. (Star Wars - Han Solo)
 """
 
         try:
-            response = self.client.chat.completions.create(
+            response = self._call_openai_with_retry(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a film expert and English teacher. Select iconic, simple movie quotes for learning."},
+                    {"role": "system", "content": f"You are a film expert specializing in the movie '{movie}'. Generate memorable quotes from this specific movie only."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
-                max_tokens=150
+                max_tokens=300
             )
 
             sentences_text = response.choices[0].message.content.strip()
             sentences = [s.strip() for s in sentences_text.split('\n') if s.strip()]
 
-            if len(sentences) != 3:
-                sentences = sentences[:3]
-
+            # 3~6개 범위 검증
             if len(sentences) < 3:
-                raise ValueError("Failed to generate 3 valid movie quotes")
+                # 최소 3개는 되도록 선택된 명대사라도 추가
+                sentences.append(f"{main_quote} ({movie} - {character})")
+                sentences = sentences[:3]
+            elif len(sentences) > 6:
+                sentences = sentences[:6]
 
-            print(f"✅ 영화 명대사 생성 완료")
+            print(f"✅ 영화 명대사 생성 완료: {movie} ({len(sentences)}개)")
             for idx, s in enumerate(sentences, 1):
                 print(f"   {idx}. {s}")
 
@@ -216,7 +333,25 @@ Output format: Return ONLY the 3 quotes, one per line, without movie names or an
 
         except Exception as e:
             print(f"✗ 영화 명대사 생성 실패: {e}")
-            raise
+            # 실패 시 선택된 명대사만 3번 반복
+            fallback = [f"{main_quote} ({movie} - {character})"] * 3
+            return fallback
+
+    def _generate_movie_quotes_fallback(self) -> list[str]:
+        """
+        movie_quotes.json 로드 실패 시 기본 명대사 3개 반환
+        """
+        fallback_quotes = [
+            "May the Force be with you. (Star Wars - Obi-Wan Kenobi)",
+            "I'll be back. (The Terminator - The Terminator)",
+            "Life is like a box of chocolates. (Forrest Gump - Forrest Gump)"
+        ]
+
+        print(f"✅ 기본 영화 명대사 3개 사용")
+        for idx, s in enumerate(fallback_quotes, 1):
+            print(f"   {idx}. {s}")
+
+        return fallback_quotes
 
     def generate_pronunciation_sentences(self) -> list[str]:
         """
@@ -238,7 +373,7 @@ Output format: Return ONLY the 3 sentences, one per line, without any other text
 """
 
         try:
-            response = self.client.chat.completions.create(
+            response = self._call_openai_with_retry(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a pronunciation expert teaching English to Korean speakers. Create sentences that help practice difficult sounds."},
@@ -287,7 +422,7 @@ Output format: Return ONLY the 3 sentences, one per line, without any other text
 """
 
         try:
-            response = self.client.chat.completions.create(
+            response = self._call_openai_with_retry(
                 model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": "You are a news writer creating simple English news sentences for Korean learners."},

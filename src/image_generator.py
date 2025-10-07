@@ -39,7 +39,10 @@ class ImageGenerator:
                 cached_path = self.resource_manager.get_image_path(prompt)
                 if self.resource_manager.image_exists(prompt):
                     print(f"✓ 캐시된 이미지 사용: {prompt[:50]}...")
-                    # 캐시된 이미지를 output_path로 복사
+                    # output_path가 cached_path와 같으면 그대로 반환
+                    if str(output_path) == str(cached_path):
+                        return str(cached_path)
+                    # 다르면 복사 (하위 호환성)
                     import shutil
                     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy(cached_path, output_path)
@@ -84,11 +87,13 @@ class ImageGenerator:
             with open(output_path, 'wb') as f:
                 f.write(image_data)
 
-            # 캐싱 사용 시, 리소스 폴더에도 저장
+            # 캐싱 사용 시, output_path와 cached_path가 다르면 리소스 폴더에도 저장
             if self.use_cache and self.resource_manager:
                 cached_path = self.resource_manager.get_image_path(prompt)
-                with open(cached_path, 'wb') as f:
-                    f.write(image_data)
+                if str(output_path) != str(cached_path):
+                    # 별도 경로에 캐시 복사본 저장
+                    with open(cached_path, 'wb') as f:
+                        f.write(image_data)
 
             print(f"✓ 이미지 저장 완료: {output_path}")
             return output_path

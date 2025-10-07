@@ -278,7 +278,8 @@ function initializeFormatSelection() {
         }
 
         const formatData = {
-            format: otherFormat,
+            format: 'other',  // 메인 포맷 타입
+            other_format: otherFormat,  // 서브 포맷 (movie, pronunciation, news, story)
             voice: voice
         };
 
@@ -291,15 +292,25 @@ function initializeFormatSelection() {
         await startOtherFormatGeneration(formatData);
     });
 
-    // 다른 포맷 선택 변경 시 스토리 옵션 표시/숨김
+    // 다른 포맷 선택 변경 시 옵션 표시/숨김
     document.getElementById('other-format').addEventListener('change', function() {
         const storyOptions = document.getElementById('story-options');
+        const movieOptions = document.getElementById('movie-options');
+
+        // 모두 숨기기
+        storyOptions.style.display = 'none';
+        movieOptions.style.display = 'none';
+
+        // 선택된 포맷에 따라 표시
         if (this.value === 'story') {
             storyOptions.style.display = 'block';
-        } else {
-            storyOptions.style.display = 'none';
+        } else if (this.value === 'movie') {
+            movieOptions.style.display = 'block';
         }
     });
+
+    // 영화 명대사 리스트 로드
+    loadMovieQuotes();
 
     // 초기 화면: 포맷 선택 표시
     showFormatSelection();
@@ -376,6 +387,14 @@ async function startOtherFormatGeneration(formatData) {
     try {
         showProgressSection();
 
+        // 영화 명대사인 경우 movie_quote_id 추가
+        if (formatData.other_format === 'movie') {
+            const movieQuoteId = document.getElementById('movie-quote').value;
+            if (movieQuoteId) {
+                formatData.movie_quote_id = movieQuoteId;
+            }
+        }
+
         const response = await fetch('/api/generate', {
             method: 'POST',
             headers: {
@@ -401,6 +420,38 @@ async function startOtherFormatGeneration(formatData) {
         console.error('Error:', error);
         alert('오류가 발생했습니다: ' + error.message);
         showFormatSelection();
+    }
+}
+
+/**
+ * 영화 명대사 리스트 로드
+ */
+async function loadMovieQuotes() {
+    try {
+        const response = await fetch('/api/movie-quotes');
+
+        if (!response.ok) {
+            console.error('Failed to load movie quotes');
+            return;
+        }
+
+        const data = await response.json();
+        const quotes = data.quotes;
+
+        // 드롭다운 채우기
+        const movieQuoteSelect = document.getElementById('movie-quote');
+
+        quotes.forEach(quote => {
+            const option = document.createElement('option');
+            option.value = quote.id;
+            option.textContent = `${quote.quote} (${quote.movie}, ${quote.year})`;
+            movieQuoteSelect.appendChild(option);
+        });
+
+        console.log(`✅ ${quotes.length}개의 영화 명대사 로드 완료`);
+
+    } catch (error) {
+        console.error('Error loading movie quotes:', error);
     }
 }
 

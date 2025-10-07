@@ -90,13 +90,12 @@ def generate_video_task(task_id, sentences, voice='nova'):
 
         # 출력 디렉토리 설정
         output_dir = app.config['OUTPUT_DIR']
-        images_dir = output_dir / 'images' / task_id
         audio_dir = output_dir / 'audio' / task_id
         videos_dir = output_dir / 'videos'
         metadata_dir = output_dir / 'metadata'
         resources_dir = output_dir / 'resources'
 
-        for dir_path in [images_dir, audio_dir, videos_dir, metadata_dir, resources_dir]:
+        for dir_path in [audio_dir, videos_dir, metadata_dir, resources_dir]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
         # 리소스 매니저 초기화 (캐싱 활성화)
@@ -116,37 +115,45 @@ def generate_video_task(task_id, sentences, voice='nova'):
         task.update(10, '문장 분석 중...', '✅ 문장 분석 시작')
         analyzer = ContentAnalyzer(api_key=api_key)
         analysis = analyzer.analyze_sentences(sentences)
-        task.update(20, '문장 분석 완료', f'✅ 문장 분석 완료 - 이미지 {analysis["num_images"]}개 생성 예정')
+        task.update(15, '문장 분석 완료', f'✅ 문장 분석 완료 - 이미지 {analysis["num_images"]}개 생성 예정')
 
-        # 2. 이미지 생성
+        # 1.5. 바이럴 훅 문구 생성 (AI 자동)
+        task.update(17, '훅 문구 생성 중...', '⏳ AI 훅 문구 생성 중...')
+        hook_phrase = analyzer.generate_hook_phrase(sentences)
+        task.update(20, '훅 문구 생성 완료', f'✅ 훅 문구: {hook_phrase}')
+
+        # 2. 이미지 생성 (모든 이미지는 resources/images에서 캐싱 관리)
         task.update(25, '이미지 생성 중...', '⏳ 이미지 생성 시작')
         image_gen = ImageGenerator(api_key=api_key, resource_manager=resource_manager, use_cache=True)
         image_paths = []
 
         for idx, prompt in enumerate(analysis['prompts']):
-            img_path = images_dir / f"image_{idx+1}.png"
+            # 이미지를 resources/images에 직접 저장 (캐싱 + 재사용)
+            # output_path를 resource_manager 경로로 설정하여 중복 저장 방지
+            output_path = resource_manager.get_image_path(prompt)
+
             image_path = image_gen.generate_image(
                 prompt=prompt,
-                output_path=str(img_path)
+                output_path=str(output_path)
             )
             image_paths.append(image_path)
             progress = 25 + (idx + 1) * (25 // len(analysis['prompts']))
             task.update(progress, f'이미지 {idx+1}/{len(analysis["prompts"])} 생성 완료',
                        f'✅ 이미지 {idx+1} 생성 완료')
 
-        # 3. 음성 생성 (각 문장별로 개별 생성)
-        task.update(55, '음성 생성 중...', '⏳ 음성 생성 시작')
+        # 3. 음성 생성 (각 문장별로 3가지 음성 생성 - 학습 효과 향상)
+        task.update(55, '음성 생성 중...', '⏳ 음성 생성 시작 (3가지 음성)')
         tts_gen = TTSGenerator(api_key=api_key, resource_manager=resource_manager, use_cache=True)
 
-        audio_info = tts_gen.generate_speech_per_sentence(
+        audio_info = tts_gen.generate_speech_per_sentence_multi_voice(
             sentences=sentences,
-            output_dir=str(audio_dir),
-            voice=voice
+            output_dir=str(audio_dir)
         )
-        total_audio_duration = sum(info['duration'] for info in audio_info)
-        task.update(70, '음성 생성 완료', f'✅ 음성 생성 완료 ({total_audio_duration:.1f}초)')
+        # 평균 duration 계산 (alloy 기준)
+        total_audio_duration = sum(info['voices']['alloy']['duration'] for info in audio_info)
+        task.update(70, '음성 생성 완료', f'✅ 음성 생성 완료 (3가지 음성, 평균 {total_audio_duration:.1f}초)')
 
-        # 4. 비디오 생성
+        # 4. 비디오 생성 (바이럴 훅 포함)
         task.update(75, '비디오 생성 중...', '⏳ 비디오 생성 시작')
         video_creator = VideoCreator(image_generator=image_gen, resource_manager=resource_manager)
         video_path = videos_dir / f'daily_english_{task_id}.mp4'
@@ -157,7 +164,8 @@ def generate_video_task(task_id, sentences, voice='nova'):
             audio_info=audio_info,
             output_path=str(video_path),
             image_groups=analysis['image_groups'],
-            translations=analysis.get('translations', [])
+            translations=analysis.get('translations', []),
+            hook_phrase=hook_phrase  # AI 자동 생성 바이럴 훅
         )
         task.update(90, '비디오 생성 완료', '✅ 비디오 생성 완료')
 
@@ -225,7 +233,7 @@ def generate():
 
         elif format_type == 'other':
             # 다른 포맷 (스토리 시리즈, 영화 명대사 등)
-            other_format = data.get('format')  # story, movie, pronunciation, news
+            other_format = data.get('other_format')  # story, movie, pronunciation, news
 
             try:
                 sentence_gen = SentenceGenerator(api_key=api_key)
@@ -236,7 +244,10 @@ def generate():
                     sentences = sentence_gen.generate_story_series(story_theme, story_day)
 
                 elif other_format == 'movie':
-                    sentences = sentence_gen.generate_movie_quotes()
+                    movie_quote_id = data.get('movie_quote_id')  # 선택된 명대사 ID (없으면 None = 랜덤)
+                    if movie_quote_id:
+                        movie_quote_id = int(movie_quote_id)
+                    sentences = sentence_gen.generate_movie_quotes(selected_quote_id=movie_quote_id)
 
                 elif other_format == 'pronunciation':
                     sentences = sentence_gen.generate_pronunciation_sentences()
@@ -306,6 +317,22 @@ def get_status(task_id):
         return jsonify({'error': '작업을 찾을 수 없습니다.'}), 404
 
     return jsonify(task.to_dict())
+
+
+@app.route('/api/movie-quotes')
+def get_movie_quotes():
+    """100개 영화 명대사 리스트 반환 API"""
+    try:
+        import json
+        quotes_file = Path(__file__).parent.parent / 'src' / 'movie_quotes.json'
+
+        with open(quotes_file, 'r', encoding='utf-8') as f:
+            quotes_data = json.load(f)
+
+        return jsonify(quotes_data)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/download/<task_id>/<file_type>')

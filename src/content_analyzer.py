@@ -20,12 +20,12 @@ class ContentAnalyzer:
         문장들을 분석하여 이미지 개수와 그룹핑 정보, 번역 반환
 
         Args:
-            sentences: 영어 문장 리스트 (3개)
+            sentences: 영어 문장 리스트 (3~6개)
 
         Returns:
             분석 결과
             {
-                'num_images': int (1-3),
+                'num_images': int (문장 개수만큼),
                 'image_groups': list[list[int]], # 각 이미지에 포함될 문장 인덱스
                 'prompts': list[str], # 각 이미지 생성용 프롬프트
                 'translations': list[str] # 각 문장의 한글 번역
@@ -40,9 +40,22 @@ class ContentAnalyzer:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are an expert at analyzing sentence relationships and creating visual prompts."},
+                    {"role": "system", "content": """You are an expert English-Korean translator and visual content creator specializing in educational materials for Korean learners.
+
+Your translations are:
+- Natural and conversational (not literal/stiff)
+- Contextually accurate and culturally appropriate
+- Easy to understand for Korean learners
+- Preserving the nuance and tone of the original English
+
+Your image prompts are:
+- Visually appealing and cute/playful for social media
+- Clear and easy to understand at a glance
+- Culturally appropriate for Korean audiences
+- Optimized for vertical 9:16 format (YouTube Shorts)"""},
                     {"role": "user", "content": prompt}
-                ]
+                ],
+                temperature=0.7  # 자연스러운 번역을 위해 약간 높은 온도
             )
 
             analysis_text = response.choices[0].message.content
@@ -69,40 +82,64 @@ class ContentAnalyzer:
             GPT 프롬프트
         """
         sentences_text = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
+        num_sentences = len(sentences)
 
-        prompt = f"""Analyze these 3 English sentences and provide:
-1. How many images should be generated (1-3)
-2. Korean translations for each sentence
+        # 번역 형식 동적 생성
+        translation_format = "\n".join([f"TRANSLATION_{i+1}: [Korean translation of sentence {i+1}]"
+                                       for i in range(num_sentences)])
+
+        prompt = f"""Analyze these {num_sentences} English sentences for a YouTube Shorts English learning video and provide:
+1. Natural Korean translations (NOT literal, but conversational and contextually accurate)
+2. Visual prompts for each sentence
 
 {sentences_text}
 
-Guidelines:
-- If all 3 sentences are closely related (same topic/context), generate 1 image covering all
-- If 2 sentences are related and 1 is different, generate 2 images
-- If all 3 sentences are different topics, generate 3 images
+📚 TRANSLATION GUIDELINES:
+- Translate naturally as native Koreans would say it
+- Consider the context and situation
+- Use appropriate levels of formality (반말/존댓말)
+- Preserve the emotional tone and nuance
+- Make it easy to understand for learners
+- Avoid overly literal or awkward translations
 
-Respond in this format:
-NUMBER_OF_IMAGES: [1, 2, or 3]
-TRANSLATION_1: [Korean translation of sentence 1]
-TRANSLATION_2: [Korean translation of sentence 2]
-TRANSLATION_3: [Korean translation of sentence 3]
-IMAGE_1: [sentence indices, e.g., "1,2,3" or "1" or "1,2"]
+Examples of good vs bad translation:
+❌ Bad: "I'm going to spend time with family" → "나는 가족과 시간을 보낼 것입니다" (too formal/literal)
+✅ Good: "I'm going to spend time with family" → "가족들이랑 시간 보낼 거예요" (natural)
+
+❌ Bad: "What's up?" → "무엇이 올라갔습니까?" (literal nonsense)
+✅ Good: "What's up?" → "어떻게 지내?" or "뭐해?" (contextual)
+
+Respond in this EXACT format:
+NUMBER_OF_IMAGES: {num_sentences}
+{translation_format}
+IMAGE_1: 1
 PROMPT_1: [detailed image generation prompt for DALL-E, in English]
-[If 2 or 3 images]
-IMAGE_2: [sentence indices]
+IMAGE_2: 2
 PROMPT_2: [detailed prompt]
-[If 3 images]
-IMAGE_3: [sentence indices]
-PROMPT_3: [detailed prompt]
+{f"IMAGE_{num_sentences}: {num_sentences}" if num_sentences > 2 else ""}
+{f"PROMPT_{num_sentences}: [detailed prompt]" if num_sentences > 2 else ""}
 
-Each prompt should create a cute, playful CARTOON or INFOGRAPHIC style illustration:
-- Style: Simple cartoon/comic style with bold outlines OR clean infographic design
-- Art: Flat 2D illustration, kawaii cute characters, or modern line art
-- Colors: Bright cheerful pastels with high contrast
-- Characters: Simple friendly cartoon style with expressive faces
-- Background: Clean simple with geometric shapes
-- Format: Vertical 9:16 ratio for mobile/YouTube Shorts
-- Mood: Fun, lighthearted, educational
+🎨 IMAGE PROMPT REQUIREMENTS (DALL-E style):
+Create GENERALIZED, REUSABLE illustrations (for better caching):
+- Make prompts GENERAL, not sentence-specific (e.g., "love theme" not "I love you scene")
+- Focus on THEME/TOPIC rather than exact sentence content
+- This allows similar sentences to reuse the same cached images
+
+Style guidelines:
+- Style: Simple flat 2D cartoon/comic with bold outlines OR modern infographic
+- Art: Kawaii cute characters with big expressive eyes OR clean line art icons
+- Colors: Bright cheerful pastels (pink, mint, yellow, sky blue) with high contrast
+- Characters: Diverse, friendly, simple cartoon people with happy expressions
+- Background: Clean minimal with geometric shapes, gradients, or patterns
+- Layout: Vertical 9:16 format optimized for mobile (important!)
+- Text: NO text in images (text will be added separately)
+- Mood: Fun, positive, educational, approachable
+- Composition: Center the main subject, leave breathing room
+
+Example GENERALIZED prompts (good for caching):
+- Instead of "person saying I love you" → "cute illustration about love and affection, hearts and warmth theme"
+- Instead of "ordering coffee at cafe" → "casual dining and cafe scene, friendly atmosphere"
+- Instead of "studying for exam" → "education and learning theme, books and study materials"
 """
         return prompt
 
@@ -118,11 +155,12 @@ Each prompt should create a cute, playful CARTOON or INFOGRAPHIC style illustrat
             분석 결과 딕셔너리
         """
         lines = analysis_text.strip().split('\n')
+        num_sentences = len(sentences)
 
-        num_images = 3  # 기본값
-        image_groups = [[0], [1], [2]]
+        num_images = num_sentences  # 기본값: 문장 개수만큼
+        image_groups = [[i] for i in range(num_sentences)]  # 각 문장당 1개 이미지
         prompts = []
-        translations = ["", "", ""]  # 번역 저장
+        translations = ["" for _ in range(num_sentences)]  # 동적 크기 배열
 
         current_prompt = ""
 
@@ -133,14 +171,14 @@ Each prompt should create a cute, playful CARTOON or INFOGRAPHIC style illustrat
                 try:
                     num_images = int(line.split(":")[1].strip())
                 except:
-                    num_images = 3
+                    num_images = num_sentences
 
             elif line.startswith("TRANSLATION_"):
                 # 번역 파싱
                 try:
                     translation_num = int(line.split("_")[1].split(":")[0])
                     translation_text = line.split(":", 1)[1].strip()
-                    if 1 <= translation_num <= 3:
+                    if 1 <= translation_num <= num_sentences:
                         translations[translation_num - 1] = translation_text
                 except:
                     pass
@@ -183,7 +221,7 @@ Each prompt should create a cute, playful CARTOON or INFOGRAPHIC style illustrat
         image_groups = image_groups[:num_images]
 
         # 번역이 없는 경우 기본 번역 생성
-        for i in range(len(sentences)):
+        for i in range(num_sentences):
             if not translations[i]:
                 translations[i] = f"[번역 필요] {sentences[i]}"
 
@@ -210,6 +248,87 @@ Each prompt should create a cute, playful CARTOON or INFOGRAPHIC style illustrat
             'prompts': [self._create_default_prompt(s) for s in sentences],
             'translations': [f"[번역 필요] {s}" for s in sentences]
         }
+
+    def generate_hook_phrase(self, sentences: list[str]) -> str:
+        """
+        인트로용 바이럴 훅 문구 생성 (AI 자동 생성)
+
+        Args:
+            sentences: 영어 문장 리스트
+
+        Returns:
+            훅 문구 (예: "99% 틀리는 표현 🔥", "이거 모르면 손해!")
+        """
+        try:
+            print("훅 문구 생성 중...")
+
+            sentences_text = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
+
+            prompt = f"""Analyze these English sentences and create ONE viral hook phrase in Korean for a YouTube Shorts intro (first 3 seconds).
+
+Sentences:
+{sentences_text}
+
+Your hook phrase should:
+✅ Be VERY short (5-10 Korean characters max)
+✅ Create urgency or FOMO (Fear of Missing Out)
+✅ Use numbers or statistics when possible
+✅ Make viewers want to stop scrolling
+✅ Be natural Korean (not translated English)
+✅ NO emojis (text only)
+
+Proven formulas:
+- "99% 틀리는 표현"
+- "이거 모르면 손해!"
+- "진짜 원어민 표현"
+- "꼭 알아야 할 문장"
+- "30초면 끝!"
+- "레전드 표현 3개"
+- "틀리기 쉬운 영어"
+
+Respond with ONLY the Korean hook phrase (no explanation, no quotes, no emojis).
+Example response format: "99% 틀리는 표현"
+"""
+
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a viral content creator specializing in Korean YouTube Shorts. You create highly engaging, clickable hook phrases."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.9,  # 높은 창의성
+                max_tokens=50
+            )
+
+            hook_phrase = response.choices[0].message.content.strip()
+
+            # 따옴표 제거 (GPT가 추가할 수 있음)
+            hook_phrase = hook_phrase.strip('"').strip("'").strip()
+
+            # 이모지 제거 (MoviePy TextClip이 이모지를 렌더링하지 못함)
+            import re
+            # 이모지 제거 정규식 (한글을 제외한 이모지만 제거)
+            emoji_pattern = re.compile(
+                "["
+                "\U0001F600-\U0001F64F"  # 감정 이모지
+                "\U0001F300-\U0001F5FF"  # 기호 & 픽토그램
+                "\U0001F680-\U0001F6FF"  # 교통 & 지도
+                "\U0001F1E0-\U0001F1FF"  # 국기
+                "\U00002600-\U000026FF"  # 기타 기호
+                "\U00002700-\U000027BF"  # Dingbats
+                "\U0001F900-\U0001F9FF"  # 추가 이모지
+                "\U0001FA70-\U0001FAFF"  # 확장 이모지
+                "]+", flags=re.UNICODE
+            )
+            hook_phrase = emoji_pattern.sub('', hook_phrase).strip()
+
+            print(f"✓ 훅 문구 생성 완료: {hook_phrase}")
+            return hook_phrase
+
+        except Exception as e:
+            print(f"✗ 훅 문구 생성 실패 (기본값 사용): {e}")
+            # 기본값: 안전한 훅 문구
+            return "오늘의 필수 표현!"
 
     def _create_default_prompt(self, sentence: str) -> str:
         """

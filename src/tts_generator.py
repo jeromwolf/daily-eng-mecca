@@ -147,3 +147,65 @@ class TTSGenerator:
             print(f"  문장 {idx+1}: {duration:.2f}초")
 
         return audio_info
+
+    def generate_speech_per_sentence_multi_voice(
+        self,
+        sentences: list[str],
+        output_dir: str,
+        voices: list[str] = None
+    ) -> list[dict]:
+        """
+        각 문장을 여러 음성으로 생성 (학습 효과 향상)
+
+        Args:
+            sentences: 영어 문장 리스트
+            output_dir: 음성 파일 저장 디렉토리
+            voices: 음성 리스트 (기본값: ["alloy", "nova", "shimmer"])
+
+        Returns:
+            각 문장별 정보 리스트
+            [
+                {
+                    'sentence': str,
+                    'voices': {
+                        'alloy': {'path': str, 'duration': float},
+                        'nova': {'path': str, 'duration': float},
+                        'shimmer': {'path': str, 'duration': float}
+                    }
+                },
+                ...
+            ]
+        """
+        if voices is None:
+            voices = ["alloy", "nova", "shimmer"]
+
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        audio_info = []
+
+        for idx, sentence in enumerate(sentences):
+            sentence_info = {
+                'sentence': sentence,
+                'voices': {}
+            }
+
+            print(f"\n문장 {idx+1}/{len(sentences)}: {sentence}")
+
+            for voice in voices:
+                audio_path = Path(output_dir) / f"sentence_{idx+1}_{voice}.mp3"
+
+                # 음성 생성
+                self.generate_speech(sentence, str(audio_path), voice)
+
+                # duration 측정
+                duration = self.get_audio_duration(str(audio_path))
+
+                sentence_info['voices'][voice] = {
+                    'path': str(audio_path),
+                    'duration': duration
+                }
+
+                print(f"  {voice}: {duration:.2f}초")
+
+            audio_info.append(sentence_info)
+
+        return audio_info
