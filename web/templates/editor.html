@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비디오 편집 - Daily English Mecca</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/editor.css">
+</head>
+<body>
+    <div class="container editor-container">
+        <!-- 헤더 -->
+        <header class="editor-header">
+            <div class="header-left">
+                <a href="/" class="back-button">← 돌아가기</a>
+                <h1>비디오 편집</h1>
+            </div>
+            <div class="header-right">
+                <span id="video-id-display"></span>
+            </div>
+        </header>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="editor-main">
+            <!-- 상단: 비디오 미리보기 -->
+            <section class="preview-section">
+                <h2>📹 비디오 미리보기</h2>
+                <div class="video-wrapper">
+                    <video id="preview-video" controls>
+                        <source src="" type="video/mp4">
+                        브라우저가 비디오를 지원하지 않습니다.
+                    </video>
+                </div>
+                <div class="playback-controls">
+                    <button id="btn-play" class="control-btn">▶ 재생</button>
+                    <button id="btn-pause" class="control-btn">⏸ 일시정지</button>
+                    <span id="timestamp">00:00 / 00:00</span>
+                </div>
+            </section>
+
+            <!-- 하단: 타임라인 + 편집 패널 -->
+            <div class="editor-workspace">
+                <!-- 좌측: 타임라인 -->
+                <aside class="timeline-section">
+                    <h3>📝 타임라인</h3>
+                    <div id="timeline" class="timeline">
+                        <!-- 인트로 -->
+                        <div class="clip intro-clip" data-type="intro" data-index="-1">
+                            <span class="clip-label">인트로</span>
+                            <span class="clip-duration">3s</span>
+                        </div>
+
+                        <!-- 문장 클립들 (JavaScript로 동적 생성) -->
+                        <div id="sentence-clips-container"></div>
+
+                        <!-- 아웃트로 -->
+                        <div class="clip outro-clip" data-type="outro" data-index="-2">
+                            <span class="clip-label">아웃트로</span>
+                            <span class="clip-duration">2s</span>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- 우측: 편집 패널 -->
+                <main class="editor-panel">
+                    <!-- 전역 설정 -->
+                    <section id="global-settings" class="settings-section">
+                        <h3>⚙️ 전역 설정</h3>
+
+                        <div class="form-group">
+                            <label for="bg-music">🎵 배경음악</label>
+                            <select id="bg-music" class="form-control">
+                                <option value="background_music.mp3">Carefree (경쾌한)</option>
+                                <option value="sherlock_intro.wav">Sherlock (탐정)</option>
+                                <option value="none">없음</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="bg-volume">🔊 배경음악 볼륨: <span id="volume-value">15%</span></label>
+                            <input type="range" id="bg-volume" class="form-range" min="0" max="100" value="15" step="1">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="intro-duration">⏱️ 인트로 길이</label>
+                            <select id="intro-duration" class="form-control">
+                                <option value="0">없음</option>
+                                <option value="1">1초</option>
+                                <option value="3" selected>3초</option>
+                                <option value="5">5초</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="outro-duration">⏱️ 아웃트로 길이</label>
+                            <select id="outro-duration" class="form-control">
+                                <option value="0">없음</option>
+                                <option value="1">1초</option>
+                                <option value="2" selected>2초</option>
+                                <option value="3">3초</option>
+                            </select>
+                        </div>
+                    </section>
+
+                    <!-- 클립별 설정 -->
+                    <section id="clip-settings" class="settings-section" style="display: none;">
+                        <h3>✏️ 클립 편집: <span id="clip-title"></span></h3>
+
+                        <div class="form-group">
+                            <label for="sentence-text">📝 영어 문장</label>
+                            <input type="text" id="sentence-text" class="form-control" placeholder="Enter sentence...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="translation-text">🇰🇷 한글 번역</label>
+                            <input type="text" id="translation-text" class="form-control" placeholder="번역 입력...">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="font-size">📏 폰트 크기: <span id="font-size-value">48px</span></label>
+                            <input type="range" id="font-size" class="form-range" min="30" max="80" value="48" step="2">
+                        </div>
+
+                        <div class="form-group">
+                            <label>📍 텍스트 위치</label>
+                            <div class="button-group">
+                                <button type="button" class="position-btn" data-position="top">⬆ 상단</button>
+                                <button type="button" class="position-btn active" data-position="center">■ 중앙</button>
+                                <button type="button" class="position-btn" data-position="bottom">⬇ 하단</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tts-voice">🗣️ TTS 음성 (첫 번째)</label>
+                            <select id="tts-voice" class="form-control">
+                                <option value="alloy">Alloy (중성)</option>
+                                <option value="nova">Nova (여성)</option>
+                                <option value="shimmer">Shimmer (밝은 여성)</option>
+                            </select>
+                            <small class="form-hint">※ 3회 반복 재생 (Alloy → Nova → Shimmer)</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="pause-after">⏸️ 문장 후 간격: <span id="pause-value">2.0초</span></label>
+                            <input type="range" id="pause-after" class="form-range" min="0" max="5" value="2" step="0.5">
+                        </div>
+
+                        <div class="form-group">
+                            <label>🖼️ 이미지</label>
+                            <div class="image-preview">
+                                <img id="clip-image" src="" alt="클립 이미지">
+                                <p id="image-path" class="image-path-text"></p>
+                            </div>
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
+
+        <!-- 하단: 액션 버튼 -->
+        <footer class="editor-footer">
+            <div class="actions">
+                <button id="btn-cancel" class="btn btn-tertiary">❌ 취소</button>
+                <button id="btn-save" class="btn btn-secondary">💾 설정 저장</button>
+                <button id="btn-regenerate" class="btn btn-primary">🎬 비디오 재생성</button>
+            </div>
+            <div id="status-message" class="status-message"></div>
+        </footer>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loading-text">비디오 재생성 중...</div>
+        <div class="loading-subtext" id="loading-subtext">약 3-5분 소요됩니다. 잠시만 기다려주세요.</div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/editor.js"></script>
+</body>
+</html>

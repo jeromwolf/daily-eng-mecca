@@ -23,6 +23,8 @@ from src.youtube_metadata import YouTubeMetadataGenerator
 from src.resource_manager import ResourceManager
 from src.background_music_downloader import BackgroundMusicDownloader
 from src.sentence_generator import SentenceGenerator
+from src.editor.config_manager import ConfigManager
+from src.editor.video_editor import VideoEditor
 
 # 환경변수 로드
 load_dotenv()
@@ -169,8 +171,24 @@ def generate_video_task(task_id, sentences, voice='nova'):
         )
         task.update(90, '비디오 생성 완료', '✅ 비디오 생성 완료')
 
+        # 4.5. 편집 설정 자동 저장 (편집 기능용)
+        task.update(92, '편집 설정 저장 중...', '⏳ 편집 설정 생성 중...')
+        config_dir = output_dir / 'edit_configs'
+        config_manager = ConfigManager(str(config_dir))
+
+        # 기본 설정 생성 및 저장
+        config = config_manager.create_default_config(
+            video_id=task_id,
+            sentences=sentences,
+            translations=analysis.get('translations', []),
+            image_paths=image_paths,
+            tts_data=audio_info
+        )
+        config_path = config_manager.save_config(task_id, config)
+        task.update(94, '편집 설정 저장 완료', f'✅ 편집 설정 저장 완료: {config_path}')
+
         # 5. 유튜브 메타정보 생성
-        task.update(92, '메타정보 생성 중...', '⏳ 메타정보 생성 시작')
+        task.update(96, '메타정보 생성 중...', '⏳ 메타정보 생성 시작')
         metadata_gen = YouTubeMetadataGenerator(api_key=api_key)
         metadata = metadata_gen.generate_metadata(sentences)
 
@@ -199,6 +217,12 @@ def generate_video_task(task_id, sentences, voice='nova'):
 def index():
     """메인 페이지"""
     return render_template('index.html')
+
+
+@app.route('/editor')
+def editor():
+    """편집 페이지"""
+    return render_template('editor.html')
 
 
 @app.route('/api/generate', methods=['POST'])
@@ -360,6 +384,126 @@ def download(task_id, file_type):
             mimetype=mimetype,
             as_attachment=True,
             download_name=download_name
+        )
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== 편집 API ====================
+
+@app.route('/api/video/<video_id>/config', methods=['GET'])
+def get_video_config(video_id):
+    """비디오 편집 설정 가져오기"""
+    try:
+        output_dir = app.config['OUTPUT_DIR']
+        config_dir = output_dir / 'edit_configs'
+
+        config_manager = ConfigManager(str(config_dir))
+
+        # 설정 파일 로드
+        config = config_manager.load_config(video_id)
+
+        if config is None:
+            return jsonify({'error': '설정 파일을 찾을 수 없습니다.'}), 404
+
+        # 비디오 파일 경로
+        video_path = output_dir / 'videos' / f'daily_english_{video_id}.mp4'
+
+        return jsonify({
+            'config': config,
+            'video_path': f'/api/download/{video_id}/video' if video_path.exists() else None,
+            'video_exists': video_path.exists()
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/video/<video_id>/config', methods=['POST'])
+def save_video_config(video_id):
+    """비디오 편집 설정 저장"""
+    try:
+        data = request.get_json()
+
+        output_dir = app.config['OUTPUT_DIR']
+        config_dir = output_dir / 'edit_configs'
+
+        config_manager = ConfigManager(str(config_dir))
+
+        # 기존 설정 로드
+        config = config_manager.load_config(video_id)
+
+        if config is None:
+            return jsonify({'error': '설정 파일을 찾을 수 없습니다. 먼저 비디오를 생성해주세요.'}), 404
+
+        # 설정 업데이트
+        if 'global_settings' in data:
+            config['global_settings'].update(data['global_settings'])
+
+        if 'clips' in data:
+            config['clips'] = data['clips']
+
+        # 설정 저장
+        config_path = config_manager.save_config(video_id, config)
+
+        return jsonify({
+            'success': True,
+            'message': '설정이 저장되었습니다.',
+            'config_path': config_path
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/video/<video_id>/regenerate', methods=['POST'])
+def regenerate_video(video_id):
+    """편집된 설정으로 비디오 재생성"""
+    try:
+        data = request.get_json()
+        config = data.get('config')
+
+        output_dir = app.config['OUTPUT_DIR']
+        config_dir = output_dir / 'edit_configs'
+        videos_dir = output_dir / 'videos'
+
+        # VideoEditor 초기화
+        video_editor = VideoEditor(str(config_dir), str(videos_dir))
+
+        # 비디오 재생성
+        import time
+        start_time = time.time()
+
+        video_path = video_editor.regenerate_video(video_id, config)
+
+        processing_time = time.time() - start_time
+
+        return jsonify({
+            'success': True,
+            'video_path': f'/api/download/{video_id}/video_edited',
+            'processing_time': round(processing_time, 2)
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/download/<video_id>/video_edited')
+def download_edited_video(video_id):
+    """편집된 비디오 다운로드"""
+    try:
+        output_dir = app.config['OUTPUT_DIR']
+        file_path = output_dir / 'videos' / f'{video_id}_edited.mp4'
+
+        if not file_path.exists():
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+
+        return send_file(
+            file_path,
+            mimetype='video/mp4',
+            as_attachment=True,
+            download_name=f'daily_english_{video_id}_edited.mp4'
         )
 
     except Exception as e:

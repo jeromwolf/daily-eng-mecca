@@ -230,6 +230,17 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * 편집 페이지로 이동
+ */
+function openEditor() {
+    if (!currentTaskId) {
+        alert('비디오 ID를 찾을 수 없습니다.');
+        return;
+    }
+    window.location.href = `/editor?video_id=${currentTaskId}`;
+}
+
 // 페이지 로드 시 포맷 선택 표시
 window.addEventListener('DOMContentLoaded', () => {
     initializeFormatSelection();
