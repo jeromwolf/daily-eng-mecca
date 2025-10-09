@@ -255,6 +255,10 @@ function initEventListeners() {
     document.getElementById('intro-duration').addEventListener('change', onGlobalSettingChange);
     document.getElementById('outro-duration').addEventListener('change', onGlobalSettingChange);
 
+    // 이미지 생성 버튼
+    document.getElementById('btn-generate-intro-image').addEventListener('click', onGenerateIntroImage);
+    document.getElementById('btn-generate-outro-image').addEventListener('click', onGenerateOutroImage);
+
     // 클립별 설정 이벤트
     document.getElementById('sentence-text').addEventListener('input', onClipSettingChange);
     document.getElementById('translation-text').addEventListener('input', onClipSettingChange);
@@ -554,6 +558,90 @@ async function onRegenerate() {
     } finally {
         // 버튼 로딩 상태 해제
         setButtonLoading(regenerateBtn, false);
+    }
+}
+
+async function onGenerateIntroImage() {
+    const promptInput = document.getElementById('intro-image-prompt');
+    const customPrompt = promptInput.value.trim();
+    const generateBtn = document.getElementById('btn-generate-intro-image');
+
+    try {
+        // 버튼 로딩 상태 시작
+        setButtonLoading(generateBtn, true);
+        showMessage('info', '인트로 이미지 생성 중... (약 10-15초 소요)');
+
+        const response = await fetch(`/api/video/${videoId}/generate-intro-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: customPrompt
+            })
+        });
+
+        if (!response.ok) {
+            const errorMsg = `HTTP ${response.status}`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+
+        showMessage('success', `인트로 이미지 생성 완료! ${data.message}`);
+        setTimeout(() => hideMessage(), 3000);
+
+        // 프롬프트 입력 초기화
+        promptInput.value = '';
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, '인트로 이미지 생성');
+        showMessage('error', friendlyMessage);
+    } finally {
+        // 버튼 로딩 상태 해제
+        setButtonLoading(generateBtn, false);
+    }
+}
+
+async function onGenerateOutroImage() {
+    const promptInput = document.getElementById('outro-image-prompt');
+    const customPrompt = promptInput.value.trim();
+    const generateBtn = document.getElementById('btn-generate-outro-image');
+
+    try {
+        // 버튼 로딩 상태 시작
+        setButtonLoading(generateBtn, true);
+        showMessage('info', '아웃트로 이미지 생성 중... (약 10-15초 소요)');
+
+        const response = await fetch(`/api/video/${videoId}/generate-outro-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: customPrompt
+            })
+        });
+
+        if (!response.ok) {
+            const errorMsg = `HTTP ${response.status}`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+
+        showMessage('success', `아웃트로 이미지 생성 완료! ${data.message}`);
+        setTimeout(() => hideMessage(), 3000);
+
+        // 프롬프트 입력 초기화
+        promptInput.value = '';
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, '아웃트로 이미지 생성');
+        showMessage('error', friendlyMessage);
+    } finally {
+        // 버튼 로딩 상태 해제
+        setButtonLoading(generateBtn, false);
     }
 }
 

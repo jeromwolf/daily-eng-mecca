@@ -12,6 +12,7 @@ sys.path.insert(0, str(project_root))
 
 from src.video_creator import VideoCreator
 from src.editor.config_manager import ConfigManager
+from src.resource_manager import ResourceManager
 
 
 class VideoEditor:
@@ -28,6 +29,10 @@ class VideoEditor:
         self.config_manager = ConfigManager(config_dir)
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # ResourceManager 초기화 (인트로/아웃트로 이미지 캐시 사용)
+        resources_dir = self.output_dir.parent / "resources"
+        self.resource_manager = ResourceManager(str(resources_dir))
 
     def regenerate_video(
         self,
@@ -54,8 +59,8 @@ class VideoEditor:
         print(f"  - 설정 버전: {config['version']}")
         print(f"  - 편집 시간: {config['edited_at']}")
 
-        # VideoCreator 인스턴스 생성
-        creator = VideoCreator()
+        # VideoCreator 인스턴스 생성 (resource_manager 전달로 인트로/아웃트로 이미지 사용)
+        creator = VideoCreator(resource_manager=self.resource_manager)
 
         # 전역 설정 적용
         global_settings = config.get("global_settings", {})
@@ -104,13 +109,27 @@ class VideoEditor:
         if intro.get("enabled", True):
             creator.intro_duration = intro.get("duration", 3)
             creator.intro_font_size = intro.get("font_size", 65)
-            print(f"  - 인트로: {creator.intro_duration}초, 폰트 {creator.intro_font_size}px")
+
+            # 커스텀 인트로 이미지 경로 설정
+            custom_intro_image = intro.get("custom_image")
+            if custom_intro_image and os.path.exists(custom_intro_image):
+                creator.intro_custom_image = custom_intro_image
+                print(f"  - 인트로: {creator.intro_duration}초, 폰트 {creator.intro_font_size}px, 커스텀 이미지 사용")
+            else:
+                print(f"  - 인트로: {creator.intro_duration}초, 폰트 {creator.intro_font_size}px")
 
         # 아웃트로 설정
         outro = global_settings.get("outro", {})
         if outro.get("enabled", True):
             creator.outro_duration = outro.get("duration", 2)
-            print(f"  - 아웃트로: {creator.outro_duration}초")
+
+            # 커스텀 아웃트로 이미지 경로 설정
+            custom_outro_image = outro.get("custom_image")
+            if custom_outro_image and os.path.exists(custom_outro_image):
+                creator.outro_custom_image = custom_outro_image
+                print(f"  - 아웃트로: {creator.outro_duration}초, 커스텀 이미지 사용")
+            else:
+                print(f"  - 아웃트로: {creator.outro_duration}초")
 
     def _extract_clip_data(
         self,
@@ -277,8 +296,8 @@ class VideoEditor:
         config_path = self.config_manager.save_config(video_id, config)
         print(f"  - 설정 저장: {config_path}")
 
-        # 4. 비디오 생성
-        creator = VideoCreator()
+        # 4. 비디오 생성 (resource_manager 전달로 인트로/아웃트로 이미지 사용)
+        creator = VideoCreator(resource_manager=self.resource_manager)
         self._apply_global_settings(creator, config.get("global_settings", {}))
 
         output_path = self.output_dir / f"{video_id}.mp4"

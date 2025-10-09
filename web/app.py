@@ -510,6 +510,130 @@ def download_edited_video(video_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/video/<video_id>/generate-intro-image', methods=['POST'])
+def generate_intro_image(video_id):
+    """인트로 이미지 생성 (커스터마이징)"""
+    try:
+        data = request.get_json()
+        custom_prompt = data.get('prompt', '')
+
+        # API 키 확인
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({'error': 'OPENAI_API_KEY가 설정되지 않았습니다.'}), 500
+
+        output_dir = app.config['OUTPUT_DIR']
+        resources_dir = output_dir / 'resources'
+        config_dir = output_dir / 'edit_configs'
+
+        # ResourceManager 초기화
+        resource_manager = ResourceManager(str(resources_dir))
+        image_gen = ImageGenerator(api_key=api_key, resource_manager=resource_manager, use_cache=False)
+
+        # 프롬프트 결정 (커스텀 또는 기본)
+        if custom_prompt.strip():
+            prompt = custom_prompt + " Vertical 9:16 format for video intro."
+        else:
+            prompt = """A simple geometric abstract background with bright cheerful blue gradient.
+Modern minimalist design with soft shapes and clean composition.
+Vertical 9:16 format. Educational and friendly mood.
+Simple flat design with pastel colors."""
+
+        # 이미지 생성 (비디오별 고유 경로)
+        image_filename = f"intro_{video_id}.png"
+        image_path = resources_dir / "images" / image_filename
+
+        generated_path = image_gen.generate_image(
+            prompt=prompt,
+            output_path=str(image_path),
+            size="1024x1792"
+        )
+
+        # Config 업데이트
+        config_manager = ConfigManager(str(config_dir))
+        config = config_manager.load_config(video_id)
+
+        if config:
+            if 'global_settings' not in config:
+                config['global_settings'] = {}
+            if 'intro' not in config['global_settings']:
+                config['global_settings']['intro'] = {}
+
+            config['global_settings']['intro']['custom_image'] = str(generated_path)
+            config_manager.save_config(video_id, config)
+
+        return jsonify({
+            'success': True,
+            'image_path': str(generated_path),
+            'message': '인트로 이미지가 생성되었습니다.'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/video/<video_id>/generate-outro-image', methods=['POST'])
+def generate_outro_image(video_id):
+    """아웃트로 이미지 생성 (커스터마이징)"""
+    try:
+        data = request.get_json()
+        custom_prompt = data.get('prompt', '')
+
+        # API 키 확인
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({'error': 'OPENAI_API_KEY가 설정되지 않았습니다.'}), 500
+
+        output_dir = app.config['OUTPUT_DIR']
+        resources_dir = output_dir / 'resources'
+        config_dir = output_dir / 'edit_configs'
+
+        # ResourceManager 초기화
+        resource_manager = ResourceManager(str(resources_dir))
+        image_gen = ImageGenerator(api_key=api_key, resource_manager=resource_manager, use_cache=False)
+
+        # 프롬프트 결정 (커스텀 또는 기본)
+        if custom_prompt.strip():
+            prompt = custom_prompt + " Vertical 9:16 format for video outro."
+        else:
+            prompt = """A simple geometric abstract background with warm pink coral gradient.
+Modern minimalist design with soft shapes and clean composition.
+Vertical 9:16 format. Friendly and inviting mood.
+Simple flat design with pastel colors."""
+
+        # 이미지 생성 (비디오별 고유 경로)
+        image_filename = f"outro_{video_id}.png"
+        image_path = resources_dir / "images" / image_filename
+
+        generated_path = image_gen.generate_image(
+            prompt=prompt,
+            output_path=str(image_path),
+            size="1024x1792"
+        )
+
+        # Config 업데이트
+        config_manager = ConfigManager(str(config_dir))
+        config = config_manager.load_config(video_id)
+
+        if config:
+            if 'global_settings' not in config:
+                config['global_settings'] = {}
+            if 'outro' not in config['global_settings']:
+                config['global_settings']['outro'] = {}
+
+            config['global_settings']['outro']['custom_image'] = str(generated_path)
+            config_manager.save_config(video_id, config)
+
+        return jsonify({
+            'success': True,
+            'image_path': str(generated_path),
+            'message': '아웃트로 이미지가 생성되었습니다.'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # API 키 확인
     if not os.getenv("OPENAI_API_KEY"):

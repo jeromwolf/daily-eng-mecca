@@ -92,6 +92,15 @@
                         </div>
 
                         <div class="form-group">
+                            <label>🖼️ 인트로 배경 이미지</label>
+                            <input type="text" id="intro-image-prompt" class="form-control" placeholder="이미지 설명 입력 (선택사항)" style="margin-bottom: 8px;">
+                            <button id="btn-generate-intro-image" class="btn btn-secondary" style="width: 100%;">
+                                ✨ 인트로 이미지 생성
+                            </button>
+                            <small class="form-hint">※ 비워두면 기본 파란색 배경이 생성됩니다</small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="outro-duration">⏱️ 아웃트로 길이</label>
                             <select id="outro-duration" class="form-control">
                                 <option value="0">없음</option>
@@ -99,6 +108,15 @@
                                 <option value="2" selected>2초</option>
                                 <option value="3">3초</option>
                             </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>🖼️ 아웃트로 배경 이미지</label>
+                            <input type="text" id="outro-image-prompt" class="form-control" placeholder="이미지 설명 입력 (선택사항)" style="margin-bottom: 8px;">
+                            <button id="btn-generate-outro-image" class="btn btn-secondary" style="width: 100%;">
+                                ✨ 아웃트로 이미지 생성
+                            </button>
+                            <small class="form-hint">※ 비워두면 기본 핑크색 배경이 생성됩니다</small>
                         </div>
                     </section>
 

@@ -18,6 +18,10 @@ class VideoCreator:
         self.image_generator = image_generator
         self.resource_manager = resource_manager
 
+        # 커스텀 인트로/아웃트로 이미지 경로 (설정에서 가져옴)
+        self.intro_custom_image = None
+        self.outro_custom_image = None
+
     def create_video(
         self,
         sentences: list[str],
@@ -129,11 +133,12 @@ class VideoCreator:
             from moviepy import CompositeAudioClip
             combined_audio = CompositeAudioClip(audio_clips)
 
-            # 배경 음악 추가 (낮은 볼륨)
+            # 배경 음악 추가 (낮은 볼륨, 인트로 3초에만 재생)
             background_music_path = None
             if self.resource_manager:
-                # resources 폴더에서 배경 음악 찾기
+                # resources 폴더에서 배경 음악 찾기 (original 파일 우선)
                 bg_music_candidates = [
+                    os.path.join(str(self.resource_manager.resources_dir), "background_music_original.mp3"),
                     os.path.join(str(self.resource_manager.resources_dir), "background_music.mp3"),
                     os.path.join(str(self.resource_manager.resources_dir), "bgm.mp3"),
                 ]
@@ -149,22 +154,31 @@ class VideoCreator:
                     print(f"  - 원본 음악 길이: {bg_music.duration:.2f}초")
                     print(f"  - 비디오 길이: {total_duration:.2f}초")
 
-                    # 비디오 길이에 맞게 자르기 (반복 없이 간단하게)
-                    if bg_music.duration < total_duration:
-                        print(f"  ⚠ 배경 음악({bg_music.duration:.2f}초)이 비디오({total_duration:.2f}초)보다 짧습니다")
-                        print(f"  - 배경 음악은 {bg_music.duration:.2f}초까지만 재생됩니다")
-                    else:
-                        # 비디오 길이만큼 자르기
-                        bg_music = bg_music.subclipped(0, total_duration)
-                        print(f"  - 배경 음악을 {total_duration:.2f}초로 조정")
-
-                    # 볼륨 낮추기 (5%) - MoviePy 2.x에서는 스칼라 곱셈 사용
+                    # 볼륨 먼저 낮추기 (5%) - 순서 중요! (볼륨 먼저, 자르기 나중)
                     bg_music = bg_music * 0.05
                     print(f"  - 볼륨 조절 완료: 5%")
+                    print(f"  - 볼륨 조절 후 길이: {bg_music.duration:.2f}초")
 
-                    # TTS와 배경음악 합성
-                    combined_audio = CompositeAudioClip([combined_audio, bg_music]).with_duration(total_duration)
-                    print("✓ 배경 음악 추가 완료")
+                    # 인트로 3초만 재생 (볼륨 조정 후 자르기)
+                    intro_duration = 3.0
+                    if bg_music.duration >= intro_duration:
+                        # 원본 파일의 앞 3초만 자르기
+                        bg_music = bg_music.subclipped(0, intro_duration)
+                        print(f"  - background_music_original.mp3의 앞 {intro_duration:.2f}초만 재생")
+                    else:
+                        # 3초보다 짧으면 그대로 사용
+                        print(f"  - 배경 음악 길이 {bg_music.duration:.2f}초 그대로 사용")
+
+                    print(f"  - 최종 배경음악 길이: {bg_music.duration:.2f}초")
+
+                    # 배경 음악을 시작(0초)에 배치 - 인트로와 동시 재생
+                    bg_music = bg_music.with_start(0)
+
+                    # TTS와 배경음악 합성 (배경음악은 인트로 3초에만 재생)
+                    # with_duration 제거 - 자동으로 올바른 길이가 설정됨
+                    combined_audio = CompositeAudioClip([combined_audio, bg_music])
+                    print(f"✓ 배경 음악 추가 완료 (인트로 {intro_duration:.2f}초에만 재생)")
+                    print(f"  - 최종 오디오 길이: {combined_audio.duration:.2f}초")
                 except Exception as e:
                     print(f"⚠ 배경 음악 추가 실패 (계속 진행): {e}")
                     import traceback
@@ -209,9 +223,15 @@ class VideoCreator:
         Returns:
             인트로 VideoClip
         """
-        # 인트로 이미지 생성 또는 캐시에서 가져오기
+        # 인트로 이미지 우선순위: 커스텀 > 캐시 > 생성 > 기본 배경
         intro_image_path = None
-        if self.image_generator and self.resource_manager:
+
+        # 1. 커스텀 이미지 확인
+        if self.intro_custom_image and os.path.exists(self.intro_custom_image):
+            print(f"✓ 커스텀 인트로 이미지 사용: {self.intro_custom_image}")
+            intro_image_path = self.intro_custom_image
+        # 2. 캐시된 템플릿 이미지 확인
+        elif self.image_generator and self.resource_manager:
             intro_prompt = """A simple geometric abstract background with bright cheerful blue gradient.
 Modern minimalist design with soft shapes and clean composition.
 Vertical 9:16 format. Educational and friendly mood.
@@ -443,9 +463,15 @@ Simple flat design with pastel colors."""
         Returns:
             아웃트로 VideoClip
         """
-        # 아웃트로 이미지 생성 또는 캐시에서 가져오기
+        # 아웃트로 이미지 우선순위: 커스텀 > 캐시 > 생성 > 기본 배경
         outro_image_path = None
-        if self.image_generator and self.resource_manager:
+
+        # 1. 커스텀 이미지 확인
+        if self.outro_custom_image and os.path.exists(self.outro_custom_image):
+            print(f"✓ 커스텀 아웃트로 이미지 사용: {self.outro_custom_image}")
+            outro_image_path = self.outro_custom_image
+        # 2. 캐시된 템플릿 이미지 확인
+        elif self.image_generator and self.resource_manager:
             outro_prompt = """A simple geometric abstract background with warm pink coral gradient.
 Modern minimalist design with soft shapes and clean composition.
 Vertical 9:16 format. Friendly and inviting mood.
