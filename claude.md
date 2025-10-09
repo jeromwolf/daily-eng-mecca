@@ -1,6 +1,6 @@
 # Daily English Mecca - 개발 컨텍스트 (Claude Code)
 
-**마지막 업데이트**: 2025-10-07
+**마지막 업데이트**: 2025-10-08
 **담당자**: 켈리 & Claude Code
 
 ---
@@ -13,14 +13,184 @@ YouTube Shorts 영어 학습 비디오 자동 생성 시스템
 - OpenAI TTS-1 음성 생성 (3가지 음성: alloy, nova, shimmer)
 - GPT-4o-mini 한국어 번역 + AI 바이럴 훅 생성
 - MoviePy 2.x 비디오 합성
-- Flask 웹 인터페이스
+- Flask 웹 인터페이스 + **비디오 에디터** 🆕
 - 인트로/아웃트로 "Daily English Mecca" 브랜딩 (gold stroke)
 - 배경 음악 (Kevin MacLeod - Pixel Peeker Polka, 경쾌한 탐정 스타일, 5% 볼륨)
 - PIL 기반 이미지 회전 로직
 
 ---
 
-## 🎯 최근 작업 (2025-10-07)
+## 🎯 최근 작업 (2025-10-08)
+
+### ✅ Phase 4: 비디오 편집 기능 완성
+
+**목표**: 기존 빠른 생성 워크플로우 유지하면서 선택적 편집 기능 추가
+
+**구현 내용:**
+
+**1. 백엔드 인프라 (100% 완료)**
+- `src/editor/config_manager.py` - 설정 파일 관리
+  - `ConfigManager.create_default_config()` - 기본 설정 생성
+  - `ConfigManager.save_config()` - 설정 저장
+  - `ConfigManager.load_config()` - 설정 로드
+- `src/editor/video_editor.py` - 비디오 재생성
+  - `VideoEditor.regenerate_video()` - 편집된 설정으로 재생성
+- API 엔드포인트 (web/app.py)
+  - `GET /api/video/<id>/config` - 설정 조회
+  - `POST /api/video/<id>/config` - 설정 저장
+  - `POST /api/video/<id>/regenerate` - 비디오 재생성
+
+**2. 프론트엔드 UI (100% 완료)**
+- `web/templates/editor.html` - 편집 페이지 (470줄)
+  - 비디오 미리보기 섹션
+  - 타임라인 (인트로/문장/아웃트로 클립)
+  - 전역 설정 (배경음악, 볼륨, 길이)
+  - 클립별 편집 패널
+- `web/static/css/editor.css` - 스타일 (470줄)
+  - Grid 레이아웃 (타임라인 300px + 편집 패널 1fr)
+  - 반응형 디자인 (1024px, 768px 브레이크포인트)
+  - 상태 메시지 스타일 (success, error, info, warning)
+- `web/static/js/editor.js` - 로직 (530줄)
+  - 설정 로드/저장/재생성
+  - 클립 선택 및 편집
+  - 비디오 재생 컨트롤
+
+**3. UX 개선 (2025-10-08 추가)**
+- **API 에러 처리**
+  - `handleApiError()` 함수 - 네트워크/404/500 에러별 사용자 친화적 메시지
+  - HTTP 상태 코드별 구체적 안내
+- **변경사항 경고**
+  - `hasUnsavedChanges` 플래그로 변경사항 추적
+  - `beforeunload` 이벤트 - 페이지 나가기 전 경고
+  - 저장 후 플래그 자동 해제
+- **키보드 단축키**
+  - `Ctrl+S` / `Cmd+S` - 저장
+  - `keyboardShortcutHandler()` 구현
+- **입력 검증**
+  - `validateSentence()` - 문장 길이 검증 (1~200자)
+  - `validateFontSize()` - 폰트 크기 검증 (30~80px)
+  - `validatePause()` - 간격 검증 (0~5초)
+  - 검증 실패 시 warning 메시지 표시 및 원래 값 복원
+
+**4. 배경음악 버그 수정 (2025-10-08)**
+- **문제**: MoviePy 볼륨 조정 (`* 0.05`) 시 오디오 길이 손상
+  - 원본 3초 → 볼륨 조정 후 0.15초로 줄어듦
+- **해결**: 볼륨 조정과 자르기 순서 변경
+  ```python
+  # Before (잘못된 순서)
+  bg_music = bg_music.subclipped(0, 3.0)  # 3초 → 0.15초로 손상
+  bg_music = bg_music * 0.05
+
+  # After (올바른 순서)
+  bg_music = bg_music * 0.05              # 볼륨 먼저
+  bg_music = bg_music.subclipped(0, 3.0)  # 자르기 나중 → 3.00초 유지
+  ```
+- **수정 파일**: `src/video_creator.py:153-168`
+
+**수정/추가 파일:**
+- `src/editor/` - 편집 기능 모듈 (신규)
+- `src/video_creator.py:153-168` - 배경음악 처리 순서 수정
+- `web/templates/editor.html` - 편집 페이지
+- `web/static/css/editor.css` - 편집 페이지 스타일
+- `web/static/js/editor.js` - 편집 페이지 로직 (에러 처리, 입력 검증, 키보드 단축키)
+- `web/templates/index.html:286-288` - [편집하기] 버튼 추가
+- `web/static/js/main.js:236-242` - `openEditor()` 함수
+
+**워크플로우:**
+```
+비디오 생성 → [편집하기] 클릭 (선택사항)
+              ↓
+         에디터 페이지
+         - 설정 로드
+         - 클립별 편집 (문장, 폰트, 음성, 간격)
+         - 전역 설정 (배경음악, 볼륨)
+         - [저장] (Ctrl+S)
+         - [재생성] (3-5분 소요)
+```
+
+**5. 로딩 UX 개선 (2025-10-08 추가)**
+- **문제**: 비디오 재생성이 3-5분 소요되는데 시각적 피드백 없음
+  - 사용자가 작동 여부를 알 수 없음
+- **해결**:
+  - **Full-screen Loading Overlay** (`web/static/css/editor.css:476-517`)
+    ```css
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+    }
+    .loading-spinner {
+        width: 60px; height: 60px;
+        border: 5px solid rgba(255, 255, 255, 0.3);
+        border-top: 5px solid white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    ```
+  - **Button Loading States** (`web/static/css/editor.css:519-539`)
+    - 버튼에 인라인 스피너 표시
+    - `pointer-events: none` - 중복 클릭 방지
+  - **JavaScript 통합** (`web/static/js/editor.js:457-558`)
+    - `showLoadingOverlay()` - 전체화면 로딩 표시
+    - `hideLoadingOverlay()` - 로딩 숨김
+    - `setButtonLoading()` - 버튼 로딩 상태 토글
+    - `onSave()` - 버튼 로딩 적용
+    - `onRegenerate()` - 전체화면 로딩 적용
+- **효과**: 사용자가 비디오 재생성 진행 상황 확인 가능
+
+**6. 비디오 재생성 크리티컬 버그 수정 (2025-10-08)**
+- **문제**: 비디오 재생성 실패 (HTTP 500 서버 오류)
+- **원인 분석**:
+  1. **잘못된 파라미터명**: `VideoEditor.regenerate_video()`가 `VideoCreator.create_video()`에 `tts_data` 전달
+     - VideoCreator는 `audio_info` 파라미터 필요
+  2. **데이터 구조 불일치**: config.json은 TTS 설정만 저장, 실제 오디오 파일 경로 없음
+  3. **오디오 파일 미해결**: 기존 생성된 MP3 파일 경로를 찾지 못함
+- **해결** (`src/editor/video_editor.py`):
+  - Line 74: 파라미터명 수정 `tts_data` → `audio_info`
+  - Lines 166-236: 새 메서드 `_extract_clip_data_with_audio()` 추가
+    ```python
+    def _extract_clip_data_with_audio(self, clips, video_id):
+        # 1. 기존 audio 파일 경로 찾기
+        audio_base_dir = project_root / "output" / "audio" / video_id
+
+        # 2. 각 클립별 음성 파일 로드
+        for i, clip in enumerate(clips, start=1):
+            tts_voices = clip['audio']['tts_voices']
+            voices_dict = {}
+
+            for voice in tts_voices:
+                audio_file = audio_base_dir / f"sentence_{i}_{voice}.mp3"
+
+                # 3. mutagen으로 duration 측정
+                audio_obj = MP3(str(audio_file))
+                duration = audio_obj.info.length
+
+                voices_dict[voice] = {
+                    'path': str(audio_file),
+                    'duration': duration
+                }
+
+        # 4. VideoCreator가 기대하는 구조로 반환
+        return sentences, translations, image_paths, audio_info
+    ```
+  - Line 66: `_extract_clip_data_with_audio()` 호출로 변경
+- **효과**:
+  - 비디오 재생성 정상 작동
+  - 기존 audio 파일 재사용 (API 비용 절감)
+  - 정확한 duration 계산으로 타이밍 정확도 향상
+
+**수정 파일 (Phase 4 완성):**
+- `web/static/css/editor.css:476-561` - 로딩 오버레이/스피너 스타일
+- `web/templates/editor.html:171-176` - 로딩 오버레이 HTML
+- `web/static/js/editor.js:457-602` - 로딩 함수 및 통합
+- `src/editor/video_editor.py:32-236` - 비디오 재생성 버그 수정
+
+---
+
+## 🎯 이전 작업 (2025-10-07)
 
 ### ✅ Phase 1: 참여도 향상 (YouTube 알고리즘 최적화)
 

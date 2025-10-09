@@ -9,7 +9,8 @@
 ## ✨ 주요 기능
 
 - 🎨 **AI 이미지 생성**: OpenAI DALL-E 3로 문장에 맞는 고품질 이미지 자동 생성
-- 🗣️ **자연스러운 음성**: OpenAI TTS로 원어민 수준의 발음 제공
+- 🗣️ **자연스러운 음성**: OpenAI TTS로 원어민 수준의 발음 제공 (3가지 음성 교체)
+- 🎵 **프로 사운드 시스템**: 18종 효과음 + 무료 배경음악 자동 적용
 - 🎬 **자동 비디오 편집**: 이미지, 텍스트, 음성을 조합하여 유튜브 쇼츠 생성
 - 📊 **유튜브 최적화**: 제목, 설명, 태그 자동 생성으로 구독자 증가 유도
 - ⚡ **빠른 제작**: 영상 1개당 3분 이내 자동 생성
@@ -215,8 +216,21 @@ daily-english-mecca/
 │   ├── tts_generator.py          # TTS 음성 생성
 │   ├── content_analyzer.py       # 문장 분석
 │   ├── youtube_metadata.py       # 메타정보 생성
-│   └── video_creator.py          # 비디오 생성
+│   ├── video_creator.py          # 비디오 생성
+│   └── audio/                    # 🆕 사운드 시스템
+│       ├── effects/              # 효과음 생성기 (18종)
+│       │   ├── base_effect.py    # 추상 클래스
+│       │   ├── ui_sounds.py      # UI 효과음 (6종)
+│       │   ├── learning_sounds.py # 학습 효과음 (6종)
+│       │   └── transition_sounds.py # 전환 효과음 (6종)
+│       ├── music/                # 배경음악 관리
+│       │   └── music_library.py  # Kevin MacLeod 무료 음악
+│       ├── presets/              # 사운드 프리셋
+│       │   └── daily_english.py  # 4가지 프리셋
+│       └── sound_library.py      # 통합 인터페이스
 ├── output/                       # 생성된 파일
+├── web/                          # Flask 웹 인터페이스
+├── test_sound_system.py          # 사운드 시스템 테스트
 ├── main.py                       # 메인 실행 파일
 ├── requirements.txt              # 패키지 목록
 ├── .env.example                  # 환경변수 예시
@@ -241,6 +255,62 @@ voice = "nova"  # 기본값: nova (여성, 부드러운 톤)
 ### 비디오 스타일 변경
 
 `src/video_creator.py`에서 색상, 폰트, 레이아웃 등을 수정할 수 있습니다.
+
+---
+
+## 🎵 사운드 시스템 (NEW!)
+
+### 효과음 (18종) - numpy 기반 생성
+
+**UI 효과음 (6종)**
+- `click`, `hover`, `notification`, `error`, `success`, `toggle`
+
+**학습 효과음 (6종)**
+- `correct`, `wrong`, `celebration`, `encouragement`, `start`, `finish`
+
+**전환 효과음 (6종)**
+- `whoosh`, `swipe`, `pop`, `slide`, `fade`, `page_turn`
+
+### 배경음악 (4 무드) - Kevin MacLeod (CC BY 4.0)
+
+- **energetic**: Happy Alley (110초)
+- **calm**: Carefree (205초)
+- **upbeat**: Fluffing a Duck (150초)
+- **focus**: Deliberate Thought (152초)
+
+### 프리셋 (4종)
+
+1. **daily_english**: 영어 학습 비디오 기본
+2. **quiz**: 퀴즈 모드
+3. **interactive**: 웹 UI 인터랙션
+4. **calm_learning**: 차분한 학습
+
+### 사용 방법
+
+```python
+from src.audio.sound_library import SoundLibrary
+
+# 라이브러리 초기화
+library = SoundLibrary()
+
+# 효과음 생성
+click_sound = library.get_effect('click')
+correct_sound = library.get_effect('correct')
+
+# 배경음악 다운로드
+music = library.get_background_music(mood='energetic')
+
+# 프리셋 적용 (자주 사용하는 조합)
+sounds = library.apply_preset('daily_english')
+```
+
+### 사운드 시스템 테스트
+
+```bash
+python test_sound_system.py
+```
+
+모든 효과음과 배경음악이 정상적으로 생성되는지 확인할 수 있습니다.
 
 ---
 
@@ -284,8 +354,9 @@ sudo apt-get install ffmpeg
 
 ## 🚀 향후 계획
 
+- [x] **프로 사운드 시스템 (완료!)** - 18종 효과음 + 무료 배경음악
+- [x] **웹 UI 개발 (완료!)** - Flask 기반 비디오 편집 인터페이스
 - [ ] 배치 처리 (CSV 파일로 여러 영상 한번에 생성)
-- [ ] 웹 UI 개발
 - [ ] 유튜브 자동 업로드
 - [ ] 다양한 템플릿 지원
 - [ ] 한국어 자막 자동 생성
