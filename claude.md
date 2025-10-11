@@ -1,6 +1,6 @@
 # Daily English Mecca - 개발 컨텍스트 (Claude Code)
 
-**마지막 업데이트**: 2025-10-09
+**마지막 업데이트**: 2025-10-12
 **담당자**: 켈리 & Claude Code
 
 ---
@@ -20,7 +20,148 @@ YouTube Shorts 영어 학습 비디오 자동 생성 시스템
 
 ---
 
-## 🎯 최근 작업 (2025-10-09)
+## 🎯 최근 작업 (2025-10-12)
+
+### ✅ 편집 페이지 UX 개선
+
+**사용자 요청**:
+1. "인트로/아웃트로 미디어교체시 화면이 안바뀌는데"
+2. "편집에서 다운로드 있어야 될것같아"
+
+**목표**: 편집 페이지의 사용성 향상 및 워크플로우 개선
+
+**구현 내용:**
+
+**1. 인트로/아웃트로 이미지 업로드 버그 수정 (100% 완료)**
+
+**문제점**:
+- 사용자가 [📁 미디어 교체] 버튼을 클릭해도 썸네일이 업데이트되지 않음
+- JavaScript가 잘못된 API 엔드포인트로 FormData 전송
+
+**원인 분석**:
+```javascript
+// 잘못된 코드 (web/static/js/editor.js:533-543)
+const response = await fetch(`/api/video/${videoId}/generate-intro-image`, {
+    method: 'POST',
+    body: formData  // FormData 전송
+});
+```
+- `/generate-intro-image` 엔드포인트는 `request.get_json()`으로 JSON만 받음
+- FormData는 `request.files`로 받아야 함
+- 백엔드에서는 이미 `/upload-intro-image` 엔드포인트가 준비되어 있었음
+
+**해결 방법** (`web/static/js/editor.js`):
+- `uploadIntroImage()` 함수 수정 (line 540):
+  ```javascript
+  // 수정 전
+  const response = await fetch(`/api/video/${videoId}/generate-intro-image`
+
+  // 수정 후
+  const response = await fetch(`/api/video/${videoId}/upload-intro-image`
+  ```
+- `uploadOutroImage()` 함수 수정 (line 588):
+  ```javascript
+  // 수정 전
+  const response = await fetch(`/api/video/${videoId}/generate-outro-image`
+
+  // 수정 후
+  const response = await fetch(`/api/video/${videoId}/upload-outro-image`
+  ```
+
+**백엔드 엔드포인트** (이미 구현됨, `web/app.py:513-616`):
+- `POST /api/video/<video_id>/upload-intro-image` - 인트로 이미지 파일 업로드
+- `POST /api/video/<video_id>/upload-outro-image` - 아웃트로 이미지 파일 업로드
+- `request.files['file']`로 파일 수신
+- 지원 형식: PNG, JPG, JPEG, GIF, WebP
+- 저장 경로: `output/resources/images/intro_{video_id}.{ext}`
+- Config 자동 업데이트: `global_settings.intro/outro.custom_image`
+
+**효과**:
+- 이미지 업로드 즉시 썸네일 업데이트
+- 편집 패널 미리보기도 동시 업데이트
+- 사용자가 변경사항을 시각적으로 확인 가능
+
+**2. 편집 페이지 다운로드 버튼 추가 (100% 완료)**
+
+**문제점**:
+- 비디오 다운로드하려면 메인 페이지로 돌아가야 함
+- 메인 페이지에서 스크롤해서 비디오 목록 찾아야 함
+- 워크플로우가 불편함
+
+**해결 방법**:
+
+**HTML 업데이트** (`web/templates/editor.html:252`):
+```html
+<footer class="editor-footer">
+    <div class="actions">
+        <button id="btn-cancel" class="btn btn-tertiary">❌ 취소</button>
+        <button id="btn-download" class="btn btn-secondary">📥 다운로드</button>  <!-- 신규 추가 -->
+        <button id="btn-save" class="btn btn-secondary">💾 설정 저장</button>
+        <button id="btn-regenerate" class="btn btn-primary">🎬 비디오 재생성</button>
+    </div>
+</footer>
+```
+
+**JavaScript 구현** (`web/static/js/editor.js:1394-1421`):
+```javascript
+function onDownload() {
+    const videoElement = document.getElementById('preview-video');
+    const videoSrc = videoElement.src;
+
+    if (!videoSrc || videoSrc === '') {
+        showMessage('error', '다운로드할 비디오가 없습니다.');
+        return;
+    }
+
+    // 비디오 파일명 생성
+    const filename = `daily_english_${videoId}.mp4`;
+
+    // 다운로드 링크 생성 및 트리거
+    const a = document.createElement('a');
+    a.href = videoSrc;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    showMessage('success', '비디오 다운로드를 시작합니다.');
+    setTimeout(() => hideMessage(), 3000);
+}
+```
+
+**이벤트 리스너 등록** (`web/static/js/editor.js:1217`):
+```javascript
+document.getElementById('btn-download').addEventListener('click', onDownload);
+```
+
+**효과**:
+- 편집 완료 후 즉시 다운로드 가능
+- 메인 페이지로 이동할 필요 없음
+- 파일명 자동 생성: `daily_english_{video_id}.mp4`
+
+**사용 흐름 개선**:
+```
+편집 페이지:
+1. [💾 설정 저장]
+2. [🎬 비디오 재생성] (3-5분 대기)
+3. [📥 다운로드] 👈 바로 다운로드!
+```
+
+**수정 파일:**
+- `web/static/js/editor.js:540, 588` - API 엔드포인트 수정 (업로드)
+- `web/templates/editor.html:252` - 다운로드 버튼 추가
+- `web/static/js/editor.js:1217, 1394-1421` - 다운로드 기능 구현
+
+**배포 관련 논의:**
+- 사용자가 배포 가능성 질문
+- 현재 로컬 절대 경로 사용으로 배포 시 수정 필요
+- Railway/Render 추천
+- 파일 스토리지, FFmpeg 설치, 타임아웃 설정 등 고려사항 안내
+
+---
+
+## 🎯 이전 작업 (2025-10-09)
 
 ### ✅ 커스텀 인트로/아웃트로 이미지 생성 기능
 

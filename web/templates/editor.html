@@ -13,18 +13,18 @@
         <header class="editor-header">
             <div class="header-left">
                 <a href="/" class="back-button">← 돌아가기</a>
-                <h1>비디오 편집</h1>
+                <h1><span class="logo-emoji">🎬</span> Daily English Mecca <span class="subtitle">Video Editor</span></h1>
             </div>
             <div class="header-right">
-                <span id="video-id-display"></span>
+                <span id="video-id-display" class="video-id-badge"></span>
             </div>
         </header>
 
         <!-- 메인 콘텐츠 -->
         <div class="editor-main">
-            <!-- 상단: 비디오 미리보기 -->
-            <section class="preview-section">
-                <h2>📹 비디오 미리보기</h2>
+            <!-- 좌측: 비디오 미리보기 -->
+            <aside class="preview-sidebar">
+                <h3>📹 미리보기</h3>
                 <div class="video-wrapper">
                     <video id="preview-video" controls>
                         <source src="" type="video/mp4">
@@ -32,31 +32,77 @@
                     </video>
                 </div>
                 <div class="playback-controls">
-                    <button id="btn-play" class="control-btn">▶ 재생</button>
-                    <button id="btn-pause" class="control-btn">⏸ 일시정지</button>
+                    <button id="btn-play" class="control-btn">▶</button>
+                    <button id="btn-pause" class="control-btn">⏸</button>
                     <span id="timestamp">00:00 / 00:00</span>
                 </div>
-            </section>
+            </aside>
 
             <!-- 하단: 타임라인 + 편집 패널 -->
             <div class="editor-workspace">
-                <!-- 좌측: 타임라인 -->
+                <!-- 좌측: 문장 리스트 -->
                 <aside class="timeline-section">
-                    <h3>📝 타임라인</h3>
+                    <h3>📝 문장 리스트</h3>
                     <div id="timeline" class="timeline">
-                        <!-- 인트로 -->
-                        <div class="clip intro-clip" data-type="intro" data-index="-1">
-                            <span class="clip-label">인트로</span>
-                            <span class="clip-duration">3s</span>
+                        <!-- 인트로 카드 -->
+                        <div class="sentence-card intro-card" data-type="intro" data-index="-1">
+                            <div class="card-header">
+                                <span class="sentence-number">🎬</span>
+                                <span class="card-title">Intro</span>
+                                <button class="btn-play-audio" id="btn-play-intro" title="비디오 시작 위치로 이동">
+                                    ▶
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="thumbnail" id="intro-thumbnail">
+                                    <div class="thumbnail-placeholder">인트로 이미지</div>
+                                </div>
+                                <div class="time-range">
+                                    <span class="start-time">00:00</span>
+                                    <span class="separator">~</span>
+                                    <span class="duration" id="intro-duration-display">3초</span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn-upload-media" id="btn-upload-intro-media">
+                                    📁 미디어 교체
+                                </button>
+                                <button class="btn-generate-ai-image" id="btn-generate-intro-ai">
+                                    ✨ AI 이미지 생성
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- 문장 클립들 (JavaScript로 동적 생성) -->
+                        <!-- 문장 카드들 (JavaScript로 동적 생성) -->
                         <div id="sentence-clips-container"></div>
 
-                        <!-- 아웃트로 -->
-                        <div class="clip outro-clip" data-type="outro" data-index="-2">
-                            <span class="clip-label">아웃트로</span>
-                            <span class="clip-duration">2s</span>
+                        <!-- 아웃트로 카드 -->
+                        <div class="sentence-card outro-card" data-type="outro" data-index="-2">
+                            <div class="card-header">
+                                <span class="sentence-number">🎭</span>
+                                <span class="card-title">Outro</span>
+                                <button class="btn-play-audio" id="btn-play-outro" title="비디오 아웃트로 위치로 이동">
+                                    ▶
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="thumbnail" id="outro-thumbnail">
+                                    <div class="thumbnail-placeholder">아웃트로 이미지</div>
+                                </div>
+                                <div class="time-range">
+                                    <span class="start-time" id="outro-start-time">00:25</span>
+                                    <span class="separator">~</span>
+                                    <span class="duration" id="outro-duration-display">2초</span>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn-upload-media" id="btn-upload-outro-media">
+                                    📁 미디어 교체
+                                </button>
+                                <button class="btn-generate-ai-image" id="btn-generate-outro-ai">
+                                    ✨ AI 이미지 생성
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </aside>
@@ -80,6 +126,11 @@
                             <label for="bg-volume">🔊 배경음악 볼륨: <span id="volume-value">15%</span></label>
                             <input type="range" id="bg-volume" class="form-range" min="0" max="100" value="15" step="1">
                         </div>
+                    </section>
+
+                    <!-- 인트로 설정 -->
+                    <section id="intro-settings" class="settings-section" style="display: none;">
+                        <h3>🎬 인트로 편집</h3>
 
                         <div class="form-group">
                             <label for="intro-duration">⏱️ 인트로 길이</label>
@@ -92,13 +143,25 @@
                         </div>
 
                         <div class="form-group">
-                            <label>🖼️ 인트로 배경 이미지</label>
+                            <label>🖼️ 배경 이미지</label>
+                            <div class="image-preview">
+                                <img id="intro-image-preview" src="" alt="인트로 이미지">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>✨ 새 이미지 생성</label>
                             <input type="text" id="intro-image-prompt" class="form-control" placeholder="이미지 설명 입력 (선택사항)" style="margin-bottom: 8px;">
                             <button id="btn-generate-intro-image" class="btn btn-secondary" style="width: 100%;">
                                 ✨ 인트로 이미지 생성
                             </button>
                             <small class="form-hint">※ 비워두면 기본 파란색 배경이 생성됩니다</small>
                         </div>
+                    </section>
+
+                    <!-- 아웃트로 설정 -->
+                    <section id="outro-settings" class="settings-section" style="display: none;">
+                        <h3>🎭 아웃트로 편집</h3>
 
                         <div class="form-group">
                             <label for="outro-duration">⏱️ 아웃트로 길이</label>
@@ -111,7 +174,14 @@
                         </div>
 
                         <div class="form-group">
-                            <label>🖼️ 아웃트로 배경 이미지</label>
+                            <label>🖼️ 배경 이미지</label>
+                            <div class="image-preview">
+                                <img id="outro-image-preview" src="" alt="아웃트로 이미지">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>✨ 새 이미지 생성</label>
                             <input type="text" id="outro-image-prompt" class="form-control" placeholder="이미지 설명 입력 (선택사항)" style="margin-bottom: 8px;">
                             <button id="btn-generate-outro-image" class="btn btn-secondary" style="width: 100%;">
                                 ✨ 아웃트로 이미지 생성
@@ -179,6 +249,7 @@
         <footer class="editor-footer">
             <div class="actions">
                 <button id="btn-cancel" class="btn btn-tertiary">❌ 취소</button>
+                <button id="btn-download" class="btn btn-secondary">📥 다운로드</button>
                 <button id="btn-save" class="btn btn-secondary">💾 설정 저장</button>
                 <button id="btn-regenerate" class="btn btn-primary">🎬 비디오 재생성</button>
             </div>

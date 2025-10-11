@@ -120,10 +120,60 @@ function displayGlobalSettings() {
     // 인트로 길이
     const introDurationSelect = document.getElementById('intro-duration');
     introDurationSelect.value = globalSettings.intro.duration;
+    document.getElementById('intro-duration-display').textContent = `${globalSettings.intro.duration}초`;
 
     // 아웃트로 길이
     const outroDurationSelect = document.getElementById('outro-duration');
     outroDurationSelect.value = globalSettings.outro.duration;
+    document.getElementById('outro-duration-display').textContent = `${globalSettings.outro.duration}초`;
+
+    // 인트로 이미지 로드
+    loadIntroOutroImages();
+}
+
+/**
+ * 인트로/아웃트로 이미지 로드
+ */
+function loadIntroOutroImages() {
+    const globalSettings = config.global_settings;
+
+    // 인트로 이미지
+    const introThumbnail = document.getElementById('intro-thumbnail');
+    const introImagePath = globalSettings.intro.custom_image || globalSettings.intro.default_image;
+
+    if (introImagePath) {
+        const webPath = getRelativeImagePath(introImagePath);
+        introThumbnail.innerHTML = `<img src="${webPath}" alt="인트로 이미지">`;
+    } else {
+        // 이미지가 없으면 기본 배경색 표시
+        introThumbnail.innerHTML = `
+            <div class="thumbnail-placeholder" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; display: flex; align-items: center; justify-content: center; height: 100%;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem;">🎬</div>
+                    <div style="margin-top: 8px;">Daily English Mecca</div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 아웃트로 이미지
+    const outroThumbnail = document.getElementById('outro-thumbnail');
+    const outroImagePath = globalSettings.outro.custom_image || globalSettings.outro.default_image;
+
+    if (outroImagePath) {
+        const webPath = getRelativeImagePath(outroImagePath);
+        outroThumbnail.innerHTML = `<img src="${webPath}" alt="아웃트로 이미지">`;
+    } else {
+        // 이미지가 없으면 기본 배경색 표시
+        outroThumbnail.innerHTML = `
+            <div class="thumbnail-placeholder" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; font-weight: 600; display: flex; align-items: center; justify-content: center; height: 100%;">
+                <div style="text-align: center;">
+                    <div style="font-size: 2rem;">🎭</div>
+                    <div style="margin-top: 8px;">좋아요 & 구독</div>
+                </div>
+            </div>
+        `;
+    }
 }
 
 function createTimelineClips() {
@@ -131,43 +181,925 @@ function createTimelineClips() {
     container.innerHTML = '';
 
     config.clips.forEach((clip, index) => {
-        const clipElement = document.createElement('div');
-        clipElement.className = 'clip sentence-clip';
-        clipElement.dataset.type = 'sentence';
-        clipElement.dataset.index = index;
+        const cardElement = createSentenceCard(clip, index);
+        container.appendChild(cardElement);
+    });
 
-        // 예상 클립 길이 계산 (TTS 3회 반복 + 간격)
-        const estimatedDuration = (clip.audio.repeat_count * 3) + clip.audio.pause_after;
+    // 아웃트로 시작 시간 업데이트
+    updateOutroTime();
 
-        clipElement.innerHTML = `
-            <span class="clip-label">문장 ${index + 1}</span>
-            <span class="clip-duration">~${estimatedDuration.toFixed(0)}s</span>
-        `;
+    // 인트로/아웃트로 카드에 클릭 이벤트 추가
+    setupIntroOutroClickEvents();
+}
 
-        clipElement.addEventListener('click', () => selectClip(index));
+/**
+ * 인트로/아웃트로 카드 클릭 이벤트 설정
+ */
+function setupIntroOutroClickEvents() {
+    // 인트로 카드
+    const introCard = document.querySelector('.intro-card');
+    if (introCard) {
+        introCard.addEventListener('click', (e) => {
+            // 버튼 클릭은 제외
+            if (!e.target.closest('button')) {
+                selectIntro();
+            }
+        });
 
-        container.appendChild(clipElement);
+        // 인트로 재생 버튼 이벤트
+        const introPlayBtn = document.getElementById('btn-play-intro');
+        if (introPlayBtn) {
+            introPlayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleIntroAudioPlayback(introPlayBtn);
+            });
+        }
+
+        // 인트로 미디어 교체 버튼 이벤트
+        const introUploadBtn = document.getElementById('btn-upload-intro-media');
+        if (introUploadBtn) {
+            introUploadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openIntroMediaUpload();
+            });
+        }
+
+        // 인트로 AI 이미지 생성 버튼 이벤트
+        const introAIBtn = document.getElementById('btn-generate-intro-ai');
+        if (introAIBtn) {
+            introAIBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateIntroAIImage();
+            });
+        }
+    }
+
+    // 아웃트로 카드
+    const outroCard = document.querySelector('.outro-card');
+    if (outroCard) {
+        outroCard.addEventListener('click', (e) => {
+            // 버튼 클릭은 제외
+            if (!e.target.closest('button')) {
+                selectOutro();
+            }
+        });
+
+        // 아웃트로 재생 버튼 이벤트
+        const outroPlayBtn = document.getElementById('btn-play-outro');
+        if (outroPlayBtn) {
+            outroPlayBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleOutroAudioPlayback(outroPlayBtn);
+            });
+        }
+
+        // 아웃트로 미디어 교체 버튼 이벤트
+        const outroUploadBtn = document.getElementById('btn-upload-outro-media');
+        if (outroUploadBtn) {
+            outroUploadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openOutroMediaUpload();
+            });
+        }
+
+        // 아웃트로 AI 이미지 생성 버튼 이벤트
+        const outroAIBtn = document.getElementById('btn-generate-outro-ai');
+        if (outroAIBtn) {
+            outroAIBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateOutroAIImage();
+            });
+        }
+    }
+}
+
+/**
+ * 아웃트로 시작 시간 계산 및 업데이트
+ */
+function updateOutroTime() {
+    let totalTime = config.global_settings.intro.duration; // 인트로
+
+    // 모든 문장 클립 길이 누적
+    config.clips.forEach(clip => {
+        const duration = (clip.audio.repeat_count * 3) + clip.audio.pause_after;
+        totalTime += duration;
+    });
+
+    // 아웃트로 시작 시간 업데이트
+    const outroStartElement = document.getElementById('outro-start-time');
+    if (outroStartElement) {
+        outroStartElement.textContent = formatTime(totalTime);
+    }
+
+    // 아웃트로 길이 업데이트
+    const outroDurationElement = document.getElementById('outro-duration-display');
+    if (outroDurationElement) {
+        const outroDuration = config.global_settings.outro.duration;
+        outroDurationElement.textContent = `${outroDuration}초`;
+    }
+}
+
+/**
+ * 문장 카드 생성 (VREW 스타일)
+ */
+function createSentenceCard(clip, index) {
+    const cardElement = document.createElement('div');
+    cardElement.className = 'sentence-card';
+    cardElement.dataset.type = 'sentence';
+    cardElement.dataset.index = index;
+
+    // 시간 계산
+    const times = calculateClipTimes(index);
+    const startTime = formatTime(times.start);
+    const duration = times.duration.toFixed(0);
+
+    // 음성 정보
+    const firstVoice = clip.audio.tts_voices[0];
+    const voiceNames = {
+        'alloy': 'Alloy',
+        'nova': 'Nova',
+        'shimmer': 'Shimmer'
+    };
+
+    // 이미지 경로
+    const imagePath = getRelativeImagePath(clip.image.path);
+
+    cardElement.innerHTML = `
+        <div class="card-header">
+            <span class="sentence-number">${index + 1}</span>
+            <span class="card-title">${truncateText(clip.sentence_text, 30)}</span>
+            <span class="voice-badge">🔊 ${voiceNames[firstVoice]}</span>
+            <button class="btn-play-audio" data-index="${index}" title="소리 미리듣기">
+                ▶
+            </button>
+        </div>
+
+        <div class="card-body">
+            <div class="sentence-text">
+                ${clip.sentence_text}
+            </div>
+
+            <div class="thumbnail">
+                ${clip.image.path
+                    ? `<img src="${imagePath}" alt="${clip.sentence_text}">`
+                    : `<div class="thumbnail-placeholder">이미지 없음</div>`
+                }
+            </div>
+
+            <div class="translation">
+                <span class="icon">📄</span>
+                <span class="text">${clip.translation}</span>
+            </div>
+
+            <div class="time-range">
+                <span class="start-time">${startTime}</span>
+                <span class="separator">~</span>
+                <span class="duration">${duration}초</span>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <button class="btn-upload-media" data-index="${index}">
+                📁 미디어 교체
+            </button>
+            <button class="btn-generate-ai-image" data-index="${index}">
+                ✨ AI 이미지 생성
+            </button>
+        </div>
+    `;
+
+    // 카드 클릭 시 선택
+    cardElement.addEventListener('click', (e) => {
+        // 버튼 클릭은 제외
+        if (!e.target.closest('button')) {
+            selectClip(index);
+            seekVideoToClip(index, times.start);
+        }
+    });
+
+    // 재생 버튼 이벤트
+    const playBtn = cardElement.querySelector('.btn-play-audio');
+    playBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleAudioPlayback(index, playBtn);
+    });
+
+    // 미디어 교체 버튼 이벤트
+    const uploadBtn = cardElement.querySelector('.btn-upload-media');
+    uploadBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openFileUploadDialog(index);
+    });
+
+    // AI 이미지 생성 버튼 이벤트
+    const generateBtn = cardElement.querySelector('.btn-generate-ai-image');
+    generateBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        generateAIImage(index);
+    });
+
+    return cardElement;
+}
+
+/**
+ * 클립 시작 시간 및 길이 계산
+ */
+function calculateClipTimes(index) {
+    let startTime = config.global_settings.intro.duration; // 인트로 길이
+
+    // 이전 클립들 길이 누적
+    for (let i = 0; i < index; i++) {
+        const prevClip = config.clips[i];
+        const prevDuration = (prevClip.audio.repeat_count * 3) + prevClip.audio.pause_after;
+        startTime += prevDuration;
+    }
+
+    // 현재 클립 길이
+    const currentClip = config.clips[index];
+    const duration = (currentClip.audio.repeat_count * 3) + currentClip.audio.pause_after;
+
+    return { start: startTime, duration: duration };
+}
+
+/**
+ * 비디오를 해당 클립 시작 시점으로 이동
+ */
+function seekVideoToClip(index, startTime) {
+    const video = document.getElementById('preview-video');
+    video.currentTime = startTime;
+
+    // 자동 재생 (선택사항)
+    // video.play();
+
+    // 선택된 카드 하이라이트
+    document.querySelectorAll('.sentence-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.querySelector(`.sentence-card[data-index="${index}"]`)?.classList.add('active');
+}
+
+/**
+ * 절대 경로를 웹 URL로 변환
+ * 예: /Users/.../output/resources/images/xxx.png → /output/resources/images/xxx.png
+ */
+function getRelativeImagePath(fullPath) {
+    if (!fullPath) return '';
+
+    // output 폴더 이후의 경로만 추출
+    const match = fullPath.match(/\/output\/(.*)/);
+    if (match) {
+        return `/output/${match[1]}`;
+    }
+
+    // output이 없는 경우 (레거시) - daily-english-mecca 이후 경로 사용
+    return fullPath.replace(/.*\/daily-english-mecca\//, '/');
+}
+
+/**
+ * 텍스트 자르기
+ */
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+}
+
+// ==================== 인트로/아웃트로 미디어 관리 ====================
+
+/**
+ * 인트로 미디어 업로드 다이얼로그 열기
+ */
+function openIntroMediaUpload() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.className = 'file-input-hidden';
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 파일 크기 검증 (50MB 제한)
+        if (file.size > 50 * 1024 * 1024) {
+            showMessage('error', '파일 크기는 50MB 이하여야 합니다.');
+            return;
+        }
+
+        // 이미지 타입만 허용
+        if (!file.type.startsWith('image/')) {
+            showMessage('error', '이미지 파일만 업로드 가능합니다.');
+            return;
+        }
+
+        await uploadIntroImage(file);
+    });
+
+    fileInput.click();
+}
+
+/**
+ * 아웃트로 미디어 업로드 다이얼로그 열기
+ */
+function openOutroMediaUpload() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.className = 'file-input-hidden';
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 파일 크기 검증 (50MB 제한)
+        if (file.size > 50 * 1024 * 1024) {
+            showMessage('error', '파일 크기는 50MB 이하여야 합니다.');
+            return;
+        }
+
+        // 이미지 타입만 허용
+        if (!file.type.startsWith('image/')) {
+            showMessage('error', '이미지 파일만 업로드 가능합니다.');
+            return;
+        }
+
+        await uploadOutroImage(file);
+    });
+
+    fileInput.click();
+}
+
+/**
+ * 인트로 이미지 업로드
+ */
+async function uploadIntroImage(file) {
+    try {
+        showMessage('info', '인트로 이미지 업로드 중...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`/api/video/${videoId}/upload-intro-image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        if (!config.global_settings.intro.custom_image) {
+            config.global_settings.intro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const introThumbnail = document.getElementById('intro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        introThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="인트로 이미지">`;
+
+        // 편집 패널 이미지도 업데이트
+        const introImagePreview = document.getElementById('intro-image-preview');
+        if (introImagePreview) {
+            introImagePreview.src = webPath + '?t=' + Date.now();
+        }
+
+        showMessage('success', '인트로 이미지 업로드 완료!');
+        setTimeout(() => hideMessage(), 3000);
+
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, '인트로 이미지 업로드');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+/**
+ * 아웃트로 이미지 업로드
+ */
+async function uploadOutroImage(file) {
+    try {
+        showMessage('info', '아웃트로 이미지 업로드 중...');
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`/api/video/${videoId}/upload-outro-image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        if (!config.global_settings.outro.custom_image) {
+            config.global_settings.outro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const outroThumbnail = document.getElementById('outro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        outroThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="아웃트로 이미지">`;
+
+        // 편집 패널 이미지도 업데이트
+        const outroImagePreview = document.getElementById('outro-image-preview');
+        if (outroImagePreview) {
+            outroImagePreview.src = webPath + '?t=' + Date.now();
+        }
+
+        showMessage('success', '아웃트로 이미지 업로드 완료!');
+        setTimeout(() => hideMessage(), 3000);
+
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, '아웃트로 이미지 업로드');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+/**
+ * 인트로 AI 이미지 생성 (카드 버튼용)
+ */
+async function generateIntroAIImage() {
+    const customPrompt = prompt(
+        '인트로 이미지를 생성할 프롬프트를 입력하세요.\n\n※ 비워두면 기본 파란색 배경이 생성됩니다',
+        ''
+    );
+
+    if (customPrompt === null) return; // 취소
+
+    try {
+        showMessage('info', 'AI 이미지 생성 중... (약 10-15초 소요)');
+
+        const response = await fetch(`/api/video/${videoId}/generate-intro-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: customPrompt
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        if (!config.global_settings.intro.custom_image) {
+            config.global_settings.intro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const introThumbnail = document.getElementById('intro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        introThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="인트로 이미지">`;
+
+        // 편집 패널 이미지도 업데이트
+        const introImagePreview = document.getElementById('intro-image-preview');
+        if (introImagePreview) {
+            introImagePreview.src = webPath + '?t=' + Date.now();
+        }
+
+        showMessage('success', `인트로 이미지 생성 완료! ${data.message}`);
+        setTimeout(() => hideMessage(), 3000);
+
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, 'AI 이미지 생성');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+/**
+ * 아웃트로 AI 이미지 생성 (카드 버튼용)
+ */
+async function generateOutroAIImage() {
+    const customPrompt = prompt(
+        '아웃트로 이미지를 생성할 프롬프트를 입력하세요.\n\n※ 비워두면 기본 핑크색 배경이 생성됩니다',
+        ''
+    );
+
+    if (customPrompt === null) return; // 취소
+
+    try {
+        showMessage('info', 'AI 이미지 생성 중... (약 10-15초 소요)');
+
+        const response = await fetch(`/api/video/${videoId}/generate-outro-image`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: customPrompt
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        if (!config.global_settings.outro.custom_image) {
+            config.global_settings.outro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const outroThumbnail = document.getElementById('outro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        outroThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="아웃트로 이미지">`;
+
+        // 편집 패널 이미지도 업데이트
+        const outroImagePreview = document.getElementById('outro-image-preview');
+        if (outroImagePreview) {
+            outroImagePreview.src = webPath + '?t=' + Date.now();
+        }
+
+        showMessage('success', `아웃트로 이미지 생성 완료! ${data.message}`);
+        setTimeout(() => hideMessage(), 3000);
+
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, 'AI 이미지 생성');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+// ==================== 미디어 업로드 ====================
+
+/**
+ * 파일 업로드 다이얼로그 열기
+ */
+function openFileUploadDialog(index) {
+    // 파일 input 생성 (동적)
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*,video/*,.gif';
+    fileInput.className = 'file-input-hidden';
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // 파일 크기 검증 (50MB 제한)
+        if (file.size > 50 * 1024 * 1024) {
+            showMessage('error', '파일 크기는 50MB 이하여야 합니다.');
+            return;
+        }
+
+        // 파일 타입 검증
+        const validTypes = ['image/png', 'image/jpeg', 'image/gif', 'video/mp4', 'video/quicktime', 'video/x-msvideo'];
+        if (!validTypes.includes(file.type)) {
+            showMessage('error', '지원하지 않는 파일 형식입니다. (지원: PNG, JPG, GIF, MP4, MOV, AVI)');
+            return;
+        }
+
+        // 업로드 시작
+        await uploadMediaFile(index, file);
+    });
+
+    // 다이얼로그 열기
+    fileInput.click();
+}
+
+/**
+ * 미디어 파일 업로드
+ */
+async function uploadMediaFile(index, file) {
+    try {
+        showMessage('info', '미디어 업로드 중...');
+
+        const formData = new FormData();
+        formData.append('media', file);
+
+        const response = await fetch(`/api/video/${videoId}/upload-media/${index}`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorMsg = `HTTP ${response.status}`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        config.clips[index].image.path = data.file_path;
+
+        // 썸네일 업데이트
+        const card = document.querySelector(`.sentence-card[data-index="${index}"]`);
+        const thumbnail = card.querySelector('.thumbnail img');
+        if (thumbnail) {
+            thumbnail.src = getRelativeImagePath(data.file_path) + '?t=' + Date.now(); // 캐시 방지
+        }
+
+        showMessage('success', `미디어 교체 완료! (${data.file_type})`);
+        setTimeout(() => hideMessage(), 3000);
+
+        // 변경사항 표시
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, '미디어 업로드');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+/**
+ * AI 이미지 생성
+ */
+async function generateAIImage(index) {
+    const clip = config.clips[index];
+    const sentence = clip.sentence_text;
+
+    // 프롬프트 확인
+    const customPrompt = prompt(
+        `AI 이미지를 생성할 프롬프트를 입력하세요.\n\n기본값: "${sentence}"`,
+        sentence
+    );
+
+    if (!customPrompt) return; // 취소
+
+    try {
+        showMessage('info', 'AI 이미지 생성 중... (약 10-15초 소요)');
+
+        const response = await fetch(`/api/video/${videoId}/generate-clip-image/${index}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: customPrompt
+            })
+        });
+
+        if (!response.ok) {
+            const errorMsg = `HTTP ${response.status}`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+
+        // Config 업데이트
+        config.clips[index].image.path = data.image_path;
+
+        // 썸네일 업데이트
+        const card = document.querySelector(`.sentence-card[data-index="${index}"]`);
+        const thumbnail = card.querySelector('.thumbnail img');
+        if (thumbnail) {
+            thumbnail.src = getRelativeImagePath(data.image_path) + '?t=' + Date.now();
+        }
+
+        showMessage('success', `AI 이미지 생성 완료! ${data.message}`);
+        setTimeout(() => hideMessage(), 3000);
+
+        // 변경사항 표시
+        markAsChanged();
+
+    } catch (error) {
+        const friendlyMessage = handleApiError(error, 'AI 이미지 생성');
+        showMessage('error', friendlyMessage);
+    }
+}
+
+// ==================== 오디오 재생 ====================
+
+let currentAudio = null; // 현재 재생 중인 오디오
+let currentPlayBtn = null; // 현재 재생 중인 버튼
+
+/**
+ * 오디오 재생/일시정지 토글 (문장 클립)
+ */
+function toggleAudioPlayback(index, playBtn) {
+    const clip = config.clips[index];
+    const firstVoice = clip.audio.tts_voices[0];
+
+    // 오디오 파일 경로 생성
+    const audioPath = `/output/audio/${videoId}/sentence_${index + 1}_${firstVoice}.mp3`;
+
+    // 이미 재생 중인 오디오가 있으면 정지
+    if (currentAudio && currentPlayBtn) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        currentPlayBtn.classList.remove('playing');
+        currentPlayBtn.textContent = '▶';
+
+        // 같은 버튼을 다시 클릭한 경우
+        if (currentPlayBtn === playBtn) {
+            currentAudio = null;
+            currentPlayBtn = null;
+            return;
+        }
+    }
+
+    // 새 오디오 생성 및 재생
+    const audio = new Audio(audioPath);
+
+    audio.addEventListener('loadeddata', () => {
+        audio.play();
+        playBtn.classList.add('playing');
+        playBtn.textContent = '⏸';
+
+        currentAudio = audio;
+        currentPlayBtn = playBtn;
+    });
+
+    audio.addEventListener('ended', () => {
+        playBtn.classList.remove('playing');
+        playBtn.textContent = '▶';
+        currentAudio = null;
+        currentPlayBtn = null;
+    });
+
+    audio.addEventListener('error', (e) => {
+        console.error('오디오 로드 실패:', audioPath, e);
+        showMessage('error', '오디오 파일을 찾을 수 없습니다.');
+        playBtn.classList.remove('playing');
+        playBtn.textContent = '▶';
+        currentAudio = null;
+        currentPlayBtn = null;
     });
 }
 
-// ==================== 클립 선택 ====================
+/**
+ * 인트로 오디오 재생/일시정지 토글
+ * (비디오를 인트로 시작 시점으로 이동 및 재생)
+ */
+function toggleIntroAudioPlayback(playBtn) {
+    const video = document.getElementById('preview-video');
+
+    // 비디오를 인트로 시작 시점(0초)으로 이동
+    video.currentTime = 0;
+
+    // 비디오 재생
+    video.play().then(() => {
+        showMessage('info', '비디오가 인트로 시작 시점으로 이동되었습니다.');
+        setTimeout(() => hideMessage(), 2000);
+    }).catch((e) => {
+        console.error('비디오 재생 실패:', e);
+        showMessage('error', '비디오 재생에 실패했습니다.');
+    });
+}
+
+/**
+ * 아웃트로 오디오 재생/일시정지 토글
+ * (비디오를 아웃트로 시작 시점으로 이동 및 재생)
+ */
+function toggleOutroAudioPlayback(playBtn) {
+    const video = document.getElementById('preview-video');
+
+    // 아웃트로 시작 시간 계산
+    let totalTime = config.global_settings.intro.duration; // 인트로
+
+    // 모든 문장 클립 길이 누적
+    config.clips.forEach(clip => {
+        const duration = (clip.audio.repeat_count * 3) + clip.audio.pause_after;
+        totalTime += duration;
+    });
+
+    // 비디오를 아웃트로 시작 시점으로 이동
+    video.currentTime = totalTime;
+
+    // 비디오 재생
+    video.play().then(() => {
+        showMessage('info', '비디오가 아웃트로 시작 시점으로 이동되었습니다.');
+        setTimeout(() => hideMessage(), 2000);
+    }).catch((e) => {
+        console.error('비디오 재생 실패:', e);
+        showMessage('error', '비디오 재생에 실패했습니다.');
+    });
+}
+
+// ==================== 클립/인트로/아웃트로 선택 ====================
 
 function selectClip(index) {
     selectedClipIndex = index;
 
-    // 모든 클립에서 active 제거
-    document.querySelectorAll('.clip').forEach(clip => {
-        clip.classList.remove('active');
+    // 모든 카드에서 active 제거
+    document.querySelectorAll('.sentence-card').forEach(card => {
+        card.classList.remove('active');
     });
 
-    // 선택된 클립에 active 추가
-    const selectedClip = document.querySelector(`.clip[data-index="${index}"]`);
-    if (selectedClip) {
-        selectedClip.classList.add('active');
+    // 선택된 카드에 active 추가
+    const selectedCard = document.querySelector(`.sentence-card[data-index="${index}"]`);
+    if (selectedCard) {
+        selectedCard.classList.add('active');
     }
+
+    // 모든 설정 섹션 숨기기
+    hideAllSettingSections();
 
     // 클립 설정 표시
     displayClipSettings(index);
+}
+
+function selectIntro() {
+    selectedClipIndex = null;
+
+    // 모든 카드에서 active 제거
+    document.querySelectorAll('.sentence-card').forEach(card => {
+        card.classList.remove('active');
+    });
+
+    // 인트로 카드에 active 추가
+    const introCard = document.querySelector('.intro-card');
+    if (introCard) {
+        introCard.classList.add('active');
+    }
+
+    // 모든 설정 섹션 숨기기
+    hideAllSettingSections();
+
+    // 인트로 설정 표시
+    displayIntroSettings();
+}
+
+function selectOutro() {
+    selectedClipIndex = null;
+
+    // 모든 카드에서 active 제거
+    document.querySelectorAll('.sentence-card').forEach(card => {
+        card.classList.remove('active');
+    });
+
+    // 아웃트로 카드에 active 추가
+    const outroCard = document.querySelector('.outro-card');
+    if (outroCard) {
+        outroCard.classList.add('active');
+    }
+
+    // 모든 설정 섹션 숨기기
+    hideAllSettingSections();
+
+    // 아웃트로 설정 표시
+    displayOutroSettings();
+}
+
+/**
+ * 모든 설정 섹션 숨기기
+ */
+function hideAllSettingSections() {
+    document.getElementById('global-settings').style.display = 'none';
+    document.getElementById('intro-settings').style.display = 'none';
+    document.getElementById('outro-settings').style.display = 'none';
+    document.getElementById('clip-settings').style.display = 'none';
+}
+
+function displayIntroSettings() {
+    const introSettings = config.global_settings.intro;
+
+    // 인트로 설정 섹션 표시
+    document.getElementById('intro-settings').style.display = 'block';
+
+    // 인트로 길이
+    const introDurationSelect = document.getElementById('intro-duration');
+    introDurationSelect.value = introSettings.duration;
+
+    // 인트로 이미지
+    const introImagePreview = document.getElementById('intro-image-preview');
+    const introImagePath = introSettings.custom_image || introSettings.default_image;
+
+    if (introImagePath) {
+        const webPath = getRelativeImagePath(introImagePath);
+        introImagePreview.src = webPath;
+    } else {
+        introImagePreview.src = '';
+    }
+}
+
+function displayOutroSettings() {
+    const outroSettings = config.global_settings.outro;
+
+    // 아웃트로 설정 섹션 표시
+    document.getElementById('outro-settings').style.display = 'block';
+
+    // 아웃트로 길이
+    const outroDurationSelect = document.getElementById('outro-duration');
+    outroDurationSelect.value = outroSettings.duration;
+
+    // 아웃트로 이미지
+    const outroImagePreview = document.getElementById('outro-image-preview');
+    const outroImagePath = outroSettings.custom_image || outroSettings.default_image;
+
+    if (outroImagePath) {
+        const webPath = getRelativeImagePath(outroImagePath);
+        outroImagePreview.src = webPath;
+    } else {
+        outroImagePreview.src = '';
+    }
 }
 
 function displayClipSettings(index) {
@@ -214,9 +1146,9 @@ function displayClipSettings(index) {
     const clipImage = document.getElementById('clip-image');
     const imagePath = document.getElementById('image-path');
     if (clip.image.path) {
-        // 이미지 경로를 상대 경로로 변환 (프로젝트 루트 기준)
-        const relativePath = clip.image.path.replace(/.*\/daily-english-mecca\//, '');
-        clipImage.src = `/${relativePath}`;
+        // 이미지 경로를 웹 URL로 변환
+        const webPath = getRelativeImagePath(clip.image.path);
+        clipImage.src = webPath;
         imagePath.textContent = clip.image.path;
     } else {
         clipImage.src = '';
@@ -282,6 +1214,7 @@ function initEventListeners() {
 
     // 액션 버튼
     document.getElementById('btn-cancel').addEventListener('click', onCancel);
+    document.getElementById('btn-download').addEventListener('click', onDownload);
     document.getElementById('btn-save').addEventListener('click', onSave);
     document.getElementById('btn-regenerate').addEventListener('click', onRegenerate);
 
@@ -458,6 +1391,35 @@ function onCancel() {
     window.location.href = '/';
 }
 
+function onDownload() {
+    const videoElement = document.getElementById('preview-video');
+    const videoSrc = videoElement.src;
+
+    if (!videoSrc || videoSrc === '') {
+        showMessage('error', '다운로드할 비디오가 없습니다.');
+        return;
+    }
+
+    // 비디오 파일명 생성
+    const filename = `daily_english_${videoId}.mp4`;
+
+    // 다운로드 링크 생성
+    const a = document.createElement('a');
+    a.href = videoSrc;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+
+    // 다운로드 트리거
+    a.click();
+
+    // 링크 제거
+    document.body.removeChild(a);
+
+    showMessage('success', '비디오 다운로드를 시작합니다.');
+    setTimeout(() => hideMessage(), 3000);
+}
+
 async function onSave() {
     if (!config) {
         showMessage('error', '설정이 없습니다.');
@@ -588,11 +1550,24 @@ async function onGenerateIntroImage() {
 
         const data = await response.json();
 
+        // Config 업데이트
+        if (!config.global_settings.intro.custom_image) {
+            config.global_settings.intro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const introThumbnail = document.getElementById('intro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        introThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="인트로 이미지">`;
+
         showMessage('success', `인트로 이미지 생성 완료! ${data.message}`);
         setTimeout(() => hideMessage(), 3000);
 
         // 프롬프트 입력 초기화
         promptInput.value = '';
+
+        // 변경사항 표시
+        markAsChanged();
 
     } catch (error) {
         const friendlyMessage = handleApiError(error, '인트로 이미지 생성');
@@ -630,11 +1605,24 @@ async function onGenerateOutroImage() {
 
         const data = await response.json();
 
+        // Config 업데이트
+        if (!config.global_settings.outro.custom_image) {
+            config.global_settings.outro.custom_image = data.image_path;
+        }
+
+        // 썸네일 업데이트
+        const outroThumbnail = document.getElementById('outro-thumbnail');
+        const webPath = getRelativeImagePath(data.image_path);
+        outroThumbnail.innerHTML = `<img src="${webPath}?t=${Date.now()}" alt="아웃트로 이미지">`;
+
         showMessage('success', `아웃트로 이미지 생성 완료! ${data.message}`);
         setTimeout(() => hideMessage(), 3000);
 
         // 프롬프트 입력 초기화
         promptInput.value = '';
+
+        // 변경사항 표시
+        markAsChanged();
 
     } catch (error) {
         const friendlyMessage = handleApiError(error, '아웃트로 이미지 생성');
