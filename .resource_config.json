@@ -1,0 +1,10 @@
+{
+  "version": "2.0",
+  "shared_resource_path": "~/ContentCreatorResources",
+  "project_output_path": "./output",
+  "cache_enabled": true,
+  "auto_cleanup": {
+    "enabled": false,
+    "older_than_days": 30
+  }
+}

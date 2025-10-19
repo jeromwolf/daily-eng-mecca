@@ -35,6 +35,13 @@
                         <button class="btn-select">선택하기</button>
                     </div>
 
+                    <div class="format-card" data-format="quiz">
+                        <div class="format-icon">🎮</div>
+                        <h3>퀴즈 챌린지</h3>
+                        <p>A/B 문제로 배우는 영문법</p>
+                        <button class="btn-select">선택하기</button>
+                    </div>
+
                     <div class="format-card" data-format="other">
                         <div class="format-icon">📚</div>
                         <h3>다른 포맷</h3>
@@ -219,6 +226,68 @@
 
                     <button type="submit" class="btn btn-primary">
                         🎬 영상 생성하기
+                    </button>
+                </form>
+            </section>
+
+            <!-- 입력 폼 (퀴즈 챌린지) -->
+            <section class="input-section" id="quiz-input" style="display: none;">
+                <button class="btn-back" onclick="showFormatSelection()">← 포맷 선택으로 돌아가기</button>
+                <h2>🎮 퀴즈 주제를 선택하세요</h2>
+
+                <form id="quiz-form">
+                    <div class="form-group">
+                        <label for="quiz-topic">퀴즈 주제</label>
+                        <select id="quiz-topic" name="quiz_topic" required>
+                            <option value="">-- 주제 선택 --</option>
+                            <option value="adjectives">😊 -ing vs -ed 형용사 (boring/bored)</option>
+                            <option value="prepositions">📍 전치사 (in/on/at)</option>
+                            <option value="articles">📝 관사 (a/an/the)</option>
+                            <option value="verbs">🏃 동사 시제 (과거/현재/미래)</option>
+                            <option value="pronouns">👤 대명사 (I/me, who/whom)</option>
+                            <option value="countable">🔢 셀 수 있는/없는 명사</option>
+                            <option value="comparatives">⚖️ 비교급/최상급</option>
+                            <option value="confusing">🤔 헷갈리는 단어 (affect/effect)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quiz-difficulty">난이도</label>
+                        <select id="quiz-difficulty" name="quiz_difficulty">
+                            <option value="beginner">🟢 초급 (Beginner)</option>
+                            <option value="intermediate" selected>🟡 중급 (Intermediate)</option>
+                            <option value="advanced">🔴 고급 (Advanced)</option>
+                        </select>
+                    </div>
+
+                    <div class="info-box" style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h4 style="margin-top: 0;">📌 퀴즈 구성</h4>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <li>A/B 객관식 1문제</li>
+                            <li>정답 공개 + 해설</li>
+                            <li>추가 예문 3개</li>
+                            <li>댓글 유도 CTA</li>
+                        </ul>
+                        <p style="margin-bottom: 0; color: #666;">💡 한국인이 자주 틀리는 문법 포인트로 자동 생성됩니다!</p>
+                    </div>
+
+                    <!-- 옵션 설정 -->
+                    <details class="options">
+                        <summary>⚙️ 옵션 설정 (선택사항)</summary>
+                        <div class="options-content">
+                            <div class="form-group">
+                                <label for="quiz-voice">음성 선택</label>
+                                <select id="quiz-voice" name="voice">
+                                    <option value="nova">Nova (여성, 부드러운)</option>
+                                    <option value="alloy">Alloy (중성, 명확한)</option>
+                                    <option value="shimmer">Shimmer (여성, 밝은)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </details>
+
+                    <button type="submit" class="btn btn-primary">
+                        🎬 퀴즈 영상 생성하기
                     </button>
                 </form>
             </section>

@@ -58,9 +58,9 @@ class BackgroundMusicDownloader:
             output_path = self.output_dir / filename
 
             # Kevin MacLeod의 무료 음악 (직접 다운로드 가능)
-            # "Pixel Peeker Polka" - 경쾌한 탐정 스타일 배경음악
-            music_url = "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pixel%20Peeker%20Polka.mp3"
-            music_name = "Pixel Peeker Polka"
+            # "Carefree" - 블로그/유튜브에서 매우 자주 사용되는 유명한 배경음악
+            music_url = "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3"
+            music_name = "Carefree"
             artist = "Kevin MacLeod"
             license_info = "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"
 
@@ -92,10 +92,10 @@ class BackgroundMusicDownloader:
         """다운로드할 음악 정보 출력"""
         print("\n다운로드할 무료 배경 음악:")
         print("=" * 60)
-        print("곡명: Pixel Peeker Polka (1분 35초)")
+        print("곡명: Carefree (3분 25초)")
         print("아티스트: Kevin MacLeod (incompetech.com)")
         print("라이선스: CC BY 4.0")
-        print("설명: 경쾌한 탐정 스타일 음악 (미스터리/코믹한 분위기)")
+        print("설명: 밝고 경쾌한 우쿨렐레 음악 (블로그/유튜브 BGM)")
         print("=" * 60)
 
     def check_music_exists(self, filename: str = "background_music.mp3") -> bool:

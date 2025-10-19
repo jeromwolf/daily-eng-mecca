@@ -10,12 +10,14 @@ let pollingInterval = null;
 const formatSelection = document.getElementById('format-selection');
 const manualInput = document.getElementById('manual-input');
 const themeInput = document.getElementById('theme-input');
+const quizInput = document.getElementById('quiz-input');
 const otherInput = document.getElementById('other-input');
 const inputSection = document.getElementById('input-section'); // 하위 호환성 유지
 const progressSection = document.getElementById('progress-section');
 const resultSection = document.getElementById('result-section');
 const sentenceForm = document.getElementById('sentence-form');
 const themeForm = document.getElementById('theme-form');
+const quizForm = document.getElementById('quiz-form');
 const otherForm = document.getElementById('other-form');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
@@ -276,6 +278,22 @@ function initializeFormatSelection() {
         await startThemeGeneration(theme, themeDetail, voice);
     });
 
+    // 퀴즈 폼 제출 이벤트
+    quizForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const topic = document.getElementById('quiz-topic').value;
+        const difficulty = document.getElementById('quiz-difficulty').value;
+        const voice = document.getElementById('quiz-voice').value;
+
+        if (!topic) {
+            alert('퀴즈 주제를 선택해주세요.');
+            return;
+        }
+
+        await startQuizGeneration(topic, difficulty, voice);
+    });
+
     // 다른 포맷 폼 제출 이벤트
     otherForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -337,6 +355,8 @@ function selectFormat(format) {
         manualInput.style.display = 'block';
     } else if (format === 'theme') {
         themeInput.style.display = 'block';
+    } else if (format === 'quiz') {
+        quizInput.style.display = 'block';
     } else if (format === 'other') {
         otherInput.style.display = 'block';
     }
@@ -349,6 +369,7 @@ function showFormatSelection() {
     formatSelection.style.display = 'block';
     manualInput.style.display = 'none';
     themeInput.style.display = 'none';
+    quizInput.style.display = 'none';
     otherInput.style.display = 'none';
     progressSection.style.display = 'none';
     resultSection.style.display = 'none';
@@ -370,6 +391,43 @@ async function startThemeGeneration(theme, themeDetail, voice) {
                 format: 'theme',
                 theme: theme,
                 theme_detail: themeDetail,
+                voice: voice,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || '비디오 생성에 실패했습니다.');
+        }
+
+        const data = await response.json();
+        currentTaskId = data.task_id;
+
+        startPolling();
+
+    } catch (error) {
+        console.error('Error:', error);
+        alert('오류가 발생했습니다: ' + error.message);
+        showFormatSelection();
+    }
+}
+
+/**
+ * 퀴즈 비디오 생성 시작
+ */
+async function startQuizGeneration(topic, difficulty, voice) {
+    try {
+        showProgressSection();
+
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                format: 'quiz',
+                quiz_topic: topic,
+                quiz_difficulty: difficulty,
                 voice: voice,
             }),
         });
@@ -477,6 +535,7 @@ function showProgressSection() {
     formatSelection.style.display = 'none';
     manualInput.style.display = 'none';
     themeInput.style.display = 'none';
+    quizInput.style.display = 'none';
     otherInput.style.display = 'none';
     progressSection.style.display = 'block';
     resultSection.style.display = 'none';

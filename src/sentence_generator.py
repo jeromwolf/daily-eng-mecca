@@ -450,3 +450,135 @@ Output format: Return ONLY the 3 sentences, one per line, without any other text
         except Exception as e:
             print(f"✗ 뉴스 문장 생성 실패: {e}")
             raise
+
+    def generate_quiz_content(self, topic: str, difficulty: str = "intermediate") -> dict:
+        """
+        퀴즈 챌린지 콘텐츠 생성 (A/B 문제 + 해설 + 예문)
+
+        Args:
+            topic: 퀴즈 주제 (adjectives, prepositions, articles, verbs, pronouns, countable, comparatives, confusing)
+            difficulty: 난이도 (beginner, intermediate, advanced)
+
+        Returns:
+            {
+                'question': '문제 질문',
+                'option_a': '선택지 A',
+                'option_b': '선택지 B',
+                'correct_answer': 'A' or 'B',
+                'explanation': '해설 (한국어)',
+                'examples': ['예문1', '예문2', '예문3']
+            }
+        """
+        # 주제별 설명
+        topic_descriptions = {
+            "adjectives": "-ing vs -ed 형용사 (boring/bored)",
+            "prepositions": "전치사 (in/on/at)",
+            "articles": "관사 (a/an/the)",
+            "verbs": "동사 시제 (과거/현재/미래)",
+            "pronouns": "대명사 (I/me, who/whom)",
+            "countable": "셀 수 있는/없는 명사",
+            "comparatives": "비교급/최상급",
+            "confusing": "헷갈리는 단어 (affect/effect)"
+        }
+
+        topic_desc = topic_descriptions.get(topic, topic)
+
+        # 난이도별 설정
+        difficulty_instructions = {
+            "beginner": "Use simple, everyday vocabulary. Focus on basic grammar rules.",
+            "intermediate": "Use common vocabulary and typical mistakes Korean learners make.",
+            "advanced": "Use nuanced expressions and subtle grammar differences."
+        }
+
+        difficulty_instruction = difficulty_instructions.get(difficulty, difficulty_instructions["intermediate"])
+
+        prompt = f"""Create an A/B quiz question for Korean English learners.
+
+Topic: {topic_desc}
+Difficulty: {difficulty}
+Instruction: {difficulty_instruction}
+
+Generate a quiz in the following format:
+
+1. Question: A clear, simple question asking which sentence is correct (in Korean)
+2. Option A: One sentence (5-10 words)
+3. Option B: One sentence (5-10 words)
+4. Correct Answer: Either 'A' or 'B'
+5. Explanation: Brief explanation in Korean (2-3 sentences) explaining why one is correct and the other is wrong
+6. Examples: 3 additional example sentences showing correct usage
+
+Requirements:
+- Make the question engaging (e.g., "한국인 95% 틀리는 문제!")
+- Options should look similar but have one clear error
+- Explanation must be in Korean, clear and educational
+- Examples should be practical and easy to understand
+
+Output format (JSON):
+{{
+    "question": "다음 중 올바른 표현은?",
+    "option_a": "[Sentence A]",
+    "option_b": "[Sentence B]",
+    "correct_answer": "A",
+    "explanation": "Korean explanation here",
+    "examples": [
+        "Example sentence 1",
+        "Example sentence 2",
+        "Example sentence 3"
+    ]
+}}
+
+Return ONLY valid JSON, no additional text."""
+
+        try:
+            response = self._call_openai_with_retry(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"You are an expert English quiz creator for Korean learners. Create engaging A/B questions that highlight common mistakes. Topic: {topic_desc}"},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.8,
+                max_tokens=500
+            )
+
+            content = response.choices[0].message.content.strip()
+
+            # JSON 파싱
+            import json
+
+            # ```json ... ``` 제거
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+
+            quiz_data = json.loads(content.strip())
+
+            # 검증
+            required_keys = ['question', 'option_a', 'option_b', 'correct_answer', 'explanation', 'examples']
+            for key in required_keys:
+                if key not in quiz_data:
+                    raise ValueError(f"Missing key: {key}")
+
+            if quiz_data['correct_answer'] not in ['A', 'B']:
+                raise ValueError(f"Invalid correct_answer: {quiz_data['correct_answer']}")
+
+            if len(quiz_data['examples']) != 3:
+                raise ValueError(f"Must have exactly 3 examples, got {len(quiz_data['examples'])}")
+
+            print(f"✅ 퀴즈 콘텐츠 생성 완료: {topic} ({difficulty})")
+            print(f"   질문: {quiz_data['question']}")
+            print(f"   A: {quiz_data['option_a']}")
+            print(f"   B: {quiz_data['option_b']}")
+            print(f"   정답: {quiz_data['correct_answer']}")
+
+            return quiz_data
+
+        except json.JSONDecodeError as e:
+            print(f"✗ JSON 파싱 실패: {e}")
+            print(f"응답 내용: {content}")
+            raise ValueError(f"Failed to parse quiz JSON: {e}")
+        except Exception as e:
+            print(f"✗ 퀴즈 콘텐츠 생성 실패: {e}")
+            raise

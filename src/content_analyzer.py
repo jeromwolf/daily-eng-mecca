@@ -264,30 +264,65 @@ Example GENERALIZED prompts (good for caching):
 
             sentences_text = "\n".join([f"{i+1}. {s}" for i, s in enumerate(sentences)])
 
-            prompt = f"""Analyze these English sentences and create ONE viral hook phrase in Korean for a YouTube Shorts intro (first 3 seconds).
+            prompt = f"""Create ONE viral hook phrase in Korean for these English learning sentences (YouTube Shorts, first 3 seconds).
 
 Sentences:
 {sentences_text}
 
-Your hook phrase should:
-✅ Be VERY short (5-10 Korean characters max)
-✅ Create urgency or FOMO (Fear of Missing Out)
-✅ Use numbers or statistics when possible
-✅ Make viewers want to stop scrolling
-✅ Be natural Korean (not translated English)
-✅ NO emojis (text only)
+🎯 TARGET AUDIENCE:
+- Korean English learners (20-35 years old)
+- Busy office workers & students
+- Want quick, practical English tips
+- TikTok/Shorts consumption habits
 
-Proven formulas:
-- "99% 틀리는 표현"
-- "이거 모르면 손해!"
-- "진짜 원어민 표현"
-- "꼭 알아야 할 문장"
-- "30초면 끝!"
-- "레전드 표현 3개"
-- "틀리기 쉬운 영어"
+🔥 VIRAL HOOK FORMULA (choose ONE strategy):
 
-Respond with ONLY the Korean hook phrase (no explanation, no quotes, no emojis).
-Example response format: "99% 틀리는 표현"
+1. **Exclusivity & Scarcity** (가장 효과적!)
+   - "원어민만 쓰는 표현"
+   - "교과서에 없는 진짜 영어"
+   - "드라마 주인공 되는 법"
+
+2. **Social Proof Failure** (실수 공감)
+   - "한국인 99% 틀리는 영어"
+   - "이거 쓰면 바로 들킴"
+   - "외국인이 웃는 영어 실수"
+
+3. **Urgency & FOMO** (놓치면 손해)
+   - "모르면 쪽팔리는 표현"
+   - "10초면 끝나는 영어"
+   - "이거 하나면 끝!"
+
+4. **Controversial & Shocking** (충격 유발)
+   - "학교에서 안 가르쳐주는 영어"
+   - "이거 몰랐다고?"
+   - "진짜 vs 가짜 영어"
+
+5. **Numbers & Stats** (구체적 수치)
+   - "3초 안에 외우기"
+   - "꼭 알아야 할 표현 3개"
+   - "1분 발음 교정"
+
+✅ REQUIREMENTS:
+- Length: 6-12 Korean characters ONLY
+- NO emojis, NO punctuation marks (!, ?)
+- Natural Korean (not translated)
+- Creates curiosity gap
+- Makes viewers stop scrolling
+
+❌ AVOID:
+- Generic: "영어 표현 배우기" (too boring)
+- Too long: "오늘 배울 필수 영어 표현 3가지" (too wordy)
+- Emojis: "🔥 핫한 표현" (no emojis!)
+
+📊 VIRAL EXAMPLES (high CTR):
+- "원어민만 쓰는 표현"
+- "한국인 99% 틀림"
+- "이거 모르면 손해"
+- "교과서에 없는 영어"
+- "3초면 끝"
+
+Respond with ONLY the hook phrase (no quotes, no explanation).
+Example: 원어민만 쓰는 표현
 """
 
             response = self.client.chat.completions.create(
