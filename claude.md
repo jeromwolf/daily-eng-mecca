@@ -1,26 +1,398 @@
 # Daily English Mecca - 개발 컨텍스트 (Claude Code)
 
-**마지막 업데이트**: 2025-10-19
+**마지막 업데이트**: 2025-11-04
 **담당자**: 켈리 & Claude Code
 
 ---
 
 ## 📌 프로젝트 개요
 
-YouTube Shorts 영어 학습 비디오 자동 생성 시스템
-- 9:16 세로 포맷 (1080x1920)
+YouTube 영어 학습 비디오 자동 생성 시스템
+- **2가지 포맷**: Shorts (9:16, 1080x1920) + Longform (16:9, 1920x1080) 🆕
 - OpenAI DALL-E 3 이미지 생성 + 캐싱
 - OpenAI TTS-1 음성 생성 (3가지 음성: alloy, nova, shimmer)
 - GPT-4o-mini 한국어 번역 + AI 바이럴 훅 생성
 - MoviePy 2.x 비디오 합성
 - Flask 웹 인터페이스 + **비디오 에디터** 🆕
-- 인트로/아웃트로 "Daily English Mecca" 브랜딩 (gold stroke)
+- **Kelly 캐릭터 브랜딩**: 인트로/아웃트로 전체 화면 배경 🆕
 - 배경 음악 (Kevin MacLeod - Pixel Peeker Polka, 경쾌한 탐정 스타일, 5% 볼륨)
 - PIL 기반 이미지 회전 로직
+- **4가지 비디오 포맷**: 매일 3문장, 테마별 묶음, 퀴즈 챌린지, **한국어 속어 vs 영어 속어** 🆕
 
 ---
 
-## 🎯 최근 작업 (2025-10-19)
+## 🎯 최근 작업 (2025-11-04)
+
+### ✅ Shorts 인트로/아웃트로 Kelly 캐릭터 배경 추가 (브랜딩 강화)
+
+**사용자 요청**:
+- "숏폼에도 인트로,아웃트로에 이미지를 넣어줄까?"
+- 현재 Shorts는 추상적인 DALL-E 배경 사용 중
+- 롱폼처럼 Kelly 캐릭터로 변경하여 브랜딩 일관성 확보
+- "오류 발생하지 말고, 잘 부탁해"
+
+**목표**: Shorts와 Longform 모두 Kelly 캐릭터로 통일된 브랜딩
+
+**구현 내용:**
+
+**1. Shorts 인트로 Kelly 캐릭터 배경 (100% 완료)**
+
+**파일**: `src/video_creator.py:286-318`
+**변경사항**: `_create_intro_clip()` 함수 수정
+
+**변경 전**:
+```python
+# DALL-E로 추상적인 파란색 그라데이션 배경 생성
+intro_prompt = (
+    "Abstract modern background for English learning video intro. "
+    "Smooth gradient with soft geometric patterns..."
+)
+intro_image_path = self.image_generator.generate_image(...)
+```
+
+**변경 후**:
+```python
+# Kelly 캐릭터 이미지 로드 (Shorts에서도 Kelly 사용)
+elif self.resource_manager:
+    kelly_candidates = [
+        "kelly_casual_hoodie.png",  # 메인
+        "kelly_ponytail.png",       # 대체1
+        "kelly_glasses.png"         # 대체2
+    ]
+    for path in kelly_candidates:
+        if os.path.exists(path):
+            intro_image_path = path
+            print(f"✓ [Shorts 인트로] Kelly 이미지 로드: {os.path.basename(path)}")
+            break
+```
+
+**2. Shorts 아웃트로 Kelly 캐릭터 배경 (100% 완료)**
+
+**파일**: `src/video_creator.py:749-780`
+**변경사항**: `_create_outro_clip()` 함수 수정
+
+**변경 전**:
+```python
+# DALL-E로 추상적인 핑크색 그라데이션 배경 생성
+outro_prompt = """A simple geometric abstract background with warm pink coral gradient.
+Modern minimalist design with soft shapes..."""
+outro_image_path = self.image_generator.generate_image(...)
+```
+
+**변경 후**:
+```python
+# Kelly 캐릭터 이미지 로드 (인트로와 동일 로직)
+elif self.resource_manager:
+    kelly_candidates = [...]
+    print(f"✓ [Shorts 아웃트로] Kelly 이미지 로드: {os.path.basename(path)}")
+```
+
+**3. 테스트 스크립트 생성 (100% 완료)**
+
+**파일**: `test_shorts_kelly.py` (신규 생성)
+
+**테스트 항목**:
+1. 인트로에 Kelly 캐릭터가 전체 화면 배경으로 표시되는가?
+2. 인트로 텍스트가 Kelly 위에 오버레이되는가?
+3. 아웃트로에 Kelly 캐릭터가 전체 화면 배경으로 표시되는가?
+4. 아웃트로 CTA 텍스트가 읽기 쉬운가?
+
+**실행 방법**:
+```bash
+cd "/Users/blockmeta/.../daily-english-mecca"
+source venv/bin/activate
+python test_shorts_kelly.py
+```
+
+**수정 파일:**
+- `src/video_creator.py:286-318` - Shorts 인트로 Kelly 배경
+- `src/video_creator.py:749-780` - Shorts 아웃트로 Kelly 배경
+- `test_shorts_kelly.py` - 테스트 스크립트 (신규)
+
+**효과:**
+✅ **브랜딩 일관성**: Shorts + Longform 모두 Kelly 캐릭터 사용
+✅ **시각적 개선**: 추상 배경 → 친근한 캐릭터로 참여도 증가
+✅ **API 비용 절감**: DALL-E 생성 없이 기존 Kelly 이미지 재사용
+✅ **오류 방지**: 안전한 폴백 로직 (이미지 없으면 기본 배경)
+
+**이전/이후 비교**:
+- **이전**: Shorts 인트로 (DALL-E 파란 그라데이션) + 아웃트로 (DALL-E 핑크 그라데이션)
+- **이후**: Shorts 인트로 (Kelly 캐릭터) + 아웃트로 (Kelly 캐릭터) = Longform과 동일
+
+---
+
+## 🎯 이전 작업 (2025-10-24)
+
+### ✅ 한국어 속어 vs 영어 속어 모듈 완성 (YouTube 성장 전략)
+
+**사용자 요청**:
+- YouTube Studio에서 "한국어 속어 vs. 원어민 영어 속어" 포맷 추천
+- 구독자 10명 → 100명 성장 목표
+- 기존 모듈에 사이드 이펙트 발생 방지 필수
+- 폰트 하단 잘림 현상 주의
+- 모듈별 전용 인트로/아웃트로 (고정 이미지)
+
+**목표**: YouTube 알고리즘 최적화 및 참여도 향상 콘텐츠 개발
+
+**구현 내용:**
+
+**1. 프롬프트 문서화 시스템 구축 (100% 완료)**
+
+**문제점**:
+- AI 프롬프트가 코드 내에 하드코딩되어 관리 어려움
+- 프롬프트 버전 관리 및 개선 히스토리 추적 불가
+
+**해결 방법**:
+- **`PROMPTS.md`** (5,000+ 라인) - 모든 AI 프롬프트 통합 문서
+  - ContentAnalyzer 프롬프트 (문장 분석, 바이럴 훅)
+  - SentenceGenerator 프롬프트 (테마, 스토리, 퀴즈, **속어 비교**)
+  - ImageGenerator 프롬프트 (DALL-E)
+  - YouTubeMetadataGenerator 프롬프트
+- **`README.md`** 업데이트 - 프롬프트 문서 링크 추가
+
+**속어 비교 프롬프트 예시**:
+```python
+# System Prompt
+"You are an expert in Korean-English language education, specializing in slang, idioms, and cultural expressions."
+
+# 10가지 제안 속어
+- "대박" (daebak) - Wow, That's amazing
+- "헐" (hul) - OMG, What the...
+- "쩐다" (jjinda) - Epic, Insane
+등
+```
+
+**2. 백엔드 AI 생성 모듈 (100% 완료)**
+
+**파일**: `src/sentence_generator.py`
+**함수**: `generate_idiom_comparison()` (147 라인)
+
+```python
+def generate_idiom_comparison(self) -> dict:
+    """
+    한국어 속어 vs 원어민 영어 속어 비교 콘텐츠 생성
+
+    Returns:
+        {
+            'format': 'idiom_comparison',
+            'korean_idiom': str,
+            'korean_meaning': str,
+            'wrong_translation': str,
+            'why_wrong': str,
+            'correct_expressions': [
+                {
+                    'english': str,
+                    'usage_level': 'informal|formal|slang',
+                    'korean_label': str,
+                    'example': str
+                }
+            ]
+        }
+    """
+```
+
+**특징**:
+- GPT-4o-mini, temperature=0.85, max_tokens=800
+- JSON 파싱 및 검증 로직
+- 3개 올바른 표현 (informal, formal, slang 레벨별)
+
+**3. 전용 배경 이미지 생성 (100% 완료)**
+
+**스크립트**: `generate_idiom_backgrounds.py` (DALL-E 3)
+
+**생성 이미지**:
+1. **`idiom_intro_bg.png`** (화면 분할)
+   - 왼쪽: 파스텔 블루 (한국 전통 문양)
+   - 오른쪽: 파스텔 핑크 (영어권 문화)
+   - 중앙 구분선
+   - 1080x1920 세로 포맷
+
+2. **`idiom_outro_bg.png`** (통합 그라데이션)
+   - 블루→핑크 그라데이션
+   - Celebratory vibe
+   - 사용자 참여 유도
+
+**4. 비디오 클립 함수 6개 (100% 완료)**
+
+**파일**: `src/video_creator.py`
+
+**함수 목록**:
+
+1. **`_create_idiom_intro_clip()`** (3초)
+   - 화면 분할 배경
+   - 타이틀: "한국어 속어 vs 원어민 영어 속어"
+   - 서브타이틀: "Daily English Mecca"
+   - **폰트 잘림 방지**: method='caption', size=(width, None), y=1650
+
+2. **`_create_idiom_outro_clip()`** (5초)
+   - 통합 그라데이션 배경
+   - CTA: "알고 있던 속어\n댓글로 남겨주세요!"
+   - 서브: "좋아요 & 구독"
+   - **폰트 잘림 방지**: y=760 (중앙 위)
+
+3. **`_create_idiom_korean_intro_clip()`** (5초)
+   - 파스텔 블루 배경
+   - 큰 텍스트: "대박" (font_size=90)
+   - 의미 설명: "놀라움, 대단함을 표현"
+   - 라벨: "🇰🇷 한국어 속어"
+
+4. **`_create_idiom_wrong_clip()`** (7초, 화면 분할)
+   - 왼쪽 (파스텔 레드): "❌ Big Night" (틀린 표현)
+   - 오른쪽 (파스텔 옐로우): "💡 직역하면 이상함" (설명)
+   - 중앙 구분선
+
+5. **`_create_idiom_correct_clip()`** (10초)
+   - 파스텔 그린 배경
+   - 3개 표현 세로 배치 (y: 570, 880, 1190)
+   - 사용 수준별 색상:
+     ```python
+     level_colors = {
+         'informal': '#1976D2',  # 파란색
+         'formal': '#7B1FA2',    # 보라색
+         'slang': '#F57C00'      # 주황색
+     }
+     ```
+
+6. **`create_idiom_comparison_video()`** (통합 함수)
+   - **비디오 구조** (약 30초):
+     ```
+     [0-3초]   인트로
+     [3-8초]   한국어 속어 소개
+     [8-15초]  틀린 번역
+     [15-25초] 올바른 표현 3개
+     [25-30초] 아웃트로
+     ```
+   - 5개 클립 타임라인 배치
+   - 오디오 5개 합성 (alloy, nova, shimmer 순환)
+   - 배경 음악 인트로 3초만 추가
+
+**5. API 라우트 통합 (100% 완료)**
+
+**파일**: `web/app.py`
+
+**변경사항**:
+
+1. **포맷 분기 추가** (Line 343-385):
+   ```python
+   elif format_type == 'idiom_comparison':
+       # 속어 비교 포맷 (신규 추가)
+       sentence_gen = SentenceGenerator(api_key=api_key)
+       idiom_data = sentence_gen.generate_idiom_comparison()
+
+       quiz_data = idiom_data  # 비디오 생성 함수에 전달
+
+       # TTS용 sentences 추출 (5개)
+       sentences = [
+           f"{idiom_data['korean_idiom']}. {idiom_data['korean_meaning']}",
+           f"{idiom_data['wrong_translation']}. {idiom_data['why_wrong']}",
+       ]
+       for expr in idiom_data['correct_expressions'][:3]:
+           sentences.append(f"{expr['english']}. {expr['korean_label']}. {expr['example']}")
+   ```
+
+2. **문장 검증 로직** (Line 415-418):
+   ```python
+   elif format_type == 'idiom_comparison':
+       # 5개 고정 (한국어 속어 + 틀린 번역 + 올바른 표현3)
+       if len(sentences) != 5:
+           return jsonify({'error': f'속어 비교 데이터가 올바르지 않습니다 ({len(sentences)}개). 5개여야 합니다.'}), 500
+   ```
+
+3. **비디오 생성 분기** (Line 182-188):
+   ```python
+   if data_format == 'idiom_comparison':
+       print("[DEBUG] 속어 비교 비디오 생성 모드")
+       video_creator.create_idiom_comparison_video(
+           idiom_data=quiz_data,
+           audio_info=audio_info,
+           output_path=str(video_path)
+       )
+   ```
+
+**6. 프론트엔드 UI (100% 완료)**
+
+**파일**: `web/templates/index.html`, `web/static/js/main.js`
+
+**HTML 추가**:
+1. **포맷 선택 카드**:
+   ```html
+   <div class="format-card" data-format="idiom_comparison">
+       <div class="format-icon">🆚</div>
+       <h3>한국어 속어 vs 영어 속어</h3>
+       <p>틀린 직역 vs 원어민 표현</p>
+       <button class="btn-select">선택하기</button>
+   </div>
+   ```
+
+2. **입력 섹션** (Line 302-351):
+   - AI 자동 생성 안내 (그라데이션 퍼플 info-box)
+   - 예상 소요 시간: 40-60초
+   - 음성 선택: alloy/nova/shimmer
+   - 제출 버튼: "🎬 속어 비교 영상 생성하기"
+
+**JavaScript 추가**:
+1. **DOM 요소** (Line 15, 23):
+   ```javascript
+   const idiomComparisonInput = document.getElementById('idiom-comparison-input');
+   const idiomComparisonForm = document.getElementById('idiom-comparison-form');
+   ```
+
+2. **포맷 선택** (Line 364-366):
+   ```javascript
+   } else if (format === 'idiom_comparison') {
+       idiomComparisonInput.style.display = 'block';
+   }
+   ```
+
+3. **폼 제출 핸들러** (Line 326-333):
+   ```javascript
+   idiomComparisonForm.addEventListener('submit', async (e) => {
+       e.preventDefault();
+       const voice = document.getElementById('idiom-voice').value;
+       await startIdiomComparisonGeneration(voice);
+   });
+   ```
+
+4. **API 호출 함수** (Line 512-542):
+   ```javascript
+   async function startIdiomComparisonGeneration(voice) {
+       const response = await fetch('/api/generate', {
+           method: 'POST',
+           headers: {'Content-Type': 'application/json'},
+           body: JSON.stringify({
+               format: 'idiom_comparison',
+               voice: voice,
+           }),
+       });
+       // ... 폴링 시작
+   }
+   ```
+
+**수정 파일 전체 목록:**
+- `PROMPTS.md` (신규 생성, 5,000+ 라인)
+- `README.md` (프롬프트 문서 링크 추가)
+- `generate_idiom_backgrounds.py` (신규 생성)
+- `src/sentence_generator.py` (147 라인 추가)
+- `src/video_creator.py` (600 라인 추가, 6개 함수)
+- `web/app.py` (3곳 수정, idiom_comparison 분기)
+- `web/templates/index.html` (50 라인 추가)
+- `web/static/js/main.js` (40 라인 추가)
+
+**사이드 이펙트 방지 검증:**
+✅ 기존 포맷 영향 없음
+- `create_video()` - 일반 포맷 (변경 없음)
+- `create_quiz_video()` - 퀴즈 포맷 (변경 없음)
+- 포맷별 독립적 분기 (`elif` 구조)
+- 하위 호환성 유지 (`quiz_data.get('format', 'quiz')`)
+
+**효과:**
+- YouTube 알고리즘 최적화 콘텐츠 (속어 비교 → 높은 참여도)
+- 댓글 유도 CTA ("알고 있던 속어 댓글로 남겨주세요!")
+- 구독자 성장 기대 (10명 → 100명 목표)
+
+---
+
+## 🎯 이전 작업 (2025-10-19)
 
 ### ✅ 퀴즈 비디오 UI 개선 (3가지 이슈 수정)
 
@@ -908,6 +1280,326 @@ python app.py
 - [ ] 썸네일 자동 생성
 - [ ] 다국어 지원 (일본어, 중국어 등)
 - [ ] 성과 분석 대시보드
+
+---
+
+## 🎭 Kelly 캐릭터 시스템
+
+### 현재 상태 (2025-11-04)
+
+**파일 위치**: `output/resources/images/kelly_casual_hoodie.png`
+
+**캐릭터 스펙**:
+- **스타일**: 애니메 스타일 (Anime/Manga)
+- **외모**: 갈색 단발머리 (brown bob cut), 파란색 후드티 (blue hoodie)
+- **배경**: 파스텔 톤 (peach/pink gradient)
+- **용도**: 인트로/아웃트로 전체 화면 배경
+
+**비디오 내 활용**:
+- **Shorts (9:16)**: 인트로/아웃트로 전체 화면 배경
+- **Longform (16:9)**: 인트로/아웃트로 전체 화면 배경
+- **레이어 구조**: 배경 → Kelly 이미지 (full-screen) → 텍스트 오버레이
+- **효과**: FadeIn 0.3~0.5초
+
+### 원본 생성 프롬프트 (DALL-E 3)
+
+```
+A friendly young woman English teacher character in anime/manga style.
+
+Physical appearance:
+- Brown bob cut hairstyle (short, straight hair ending at chin level)
+- Warm, approachable facial expression with gentle smile
+- Casual outfit: Blue hoodie (comfortable, modern style)
+- Age appearance: Early to mid-20s
+
+Art style:
+- Clean anime/manga illustration style
+- Soft pastel color palette (peach, pink, light blue tones)
+- Simple, friendly design suitable for educational content
+- Professional yet approachable look
+
+Background:
+- Soft pastel gradient background (peach to pink)
+- Minimal, clean aesthetic
+- No distracting elements
+
+Format:
+- Vertical portrait orientation (9:16 for mobile/shorts)
+- Character positioned centrally
+- Full body or upper body composition
+- High quality, clear details
+
+Mood:
+- Warm, friendly, encouraging
+- Professional but not intimidating
+- Perfect for English learning content
+```
+
+**생성 파라미터**:
+- Model: `dall-e-3`
+- Size: `1024x1792` (9:16 세로 포맷)
+- Quality: `standard`
+- Style: Natural (default)
+
+### 캐릭터 일관성 유지 가이드
+
+**재생성 시 주의사항**:
+1. **핵심 특징 유지**: 갈색 단발머리 + 파란 후드티 (브랜드 아이덴티티)
+2. **스타일 고정**: 애니메 스타일 (realistic 금지)
+3. **색상 팔레트**: 파스텔 톤 (peach, pink, light blue)
+4. **표정**: 친근하고 따뜻한 미소 (intimidating 표정 금지)
+5. **배경**: 단순하고 깔끔 (교육 콘텐츠에 집중)
+
+**향후 포즈 변형 시**:
+- 기본 외모 유지 (머리, 옷, 얼굴)
+- 포즈/표정만 변경 (예: 손 흔들기, 가리키기, 생각하는 표정)
+- 프롬프트 끝에 추가: "Same character as before, but [새로운 포즈/표정]"
+
+### 확장 로드맵
+
+**Phase 1: 간단한 애니메이션** (예정)
+- MoviePy effects를 활용한 간단한 움직임
+- 예시: 좌우 흔들림, 확대/축소 (breathing effect)
+```python
+kelly_clip = kelly_clip.with_effects([
+    vfx.FadeIn(0.5),
+    # 좌우 흔들림
+    lambda clip: clip.with_position(lambda t: ('center', 50 + 20 * sin(t * 2)))
+])
+```
+
+**Phase 2: 시나리오별 포즈** (예정)
+- 인트로: 캐주얼 포즈 (현재)
+- 아웃트로: 손 흔들기 (waving)
+- 티칭: 가리키기 (pointing)
+- 퀴즈: 생각하는 표정 (thinking)
+
+**Phase 3: 프레임 기반 애니메이션** (예정)
+- 여러 프레임 이미지로 sprite animation
+- 걷기, 말하기 등 연속 동작
+
+**Phase 4: AI 생성 포즈 자동화** (예정)
+- DALL-E로 포즈별 이미지 자동 생성
+- 캐릭터 일관성 유지를 위한 프롬프트 템플릿
+
+**Phase 5: 실시간 비디오 애니메이션** (장기 목표)
+- GEN-3 Alpha, Runway ML 등 AI 비디오 생성
+- 또는 Live2D 같은 2D 리깅 시스템
+
+### 기술적 구현
+
+**현재 코드 위치**:
+- `src/video_creator.py:2450-2476` - Kelly 이미지 로드 로직
+- `src/video_creator.py:939-953` - Longform 인트로 Kelly 배치
+- `src/video_creator.py:1047-1061` - Longform 아웃트로 Kelly 배치
+
+**이미지 처리 로직**:
+```python
+# 1. Kelly 이미지 로드
+kelly_clip = ImageClip(kelly_image_path).with_duration(duration)
+
+# 2. 전체 화면 크기로 리사이즈 (16:9 또는 9:16 비율에 맞춤)
+kelly_clip = kelly_clip.resized(height=self.height)
+
+# 3. 가로가 부족하면 가로 기준으로 리사이즈
+if kelly_clip.w < self.width:
+    kelly_clip = kelly_clip.resized(width=self.width)
+
+# 4. 중앙 정렬
+kelly_clip = kelly_clip.with_position('center')
+
+# 5. FadeIn 효과
+kelly_clip = kelly_clip.with_effects([vfx.FadeIn(0.5)])
+```
+
+**향후 확장 시 코드 구조**:
+- `src/config/character_settings.py` (신규 파일 예정) - Kelly 포즈별 설정
+- `src/character/kelly_animator.py` (신규 모듈 예정) - 애니메이션 로직
+- `src/character/kelly_voice.py` (신규 모듈 예정) - Kelly 음성 추임새/개입 로직
+
+### 음성 추임새 & 중간 개입 아이디어 (향후 기능)
+
+**목표**: Kelly 캐릭터가 비디오 중간중간 짧은 음성으로 개입하여 학습 경험을 더 인터랙티브하게 만들기
+
+#### 1. 짧은 추임새 (Interjections)
+
+**타이밍**: 문장과 문장 사이 (현재 2초 pause 구간)
+**길이**: 1~2초
+
+**추임새 종류**:
+- **긍정/격려**: "Great!", "Perfect!", "Well done!", "Exactly!"
+- **놀람/감탄**: "Wow!", "Amazing!", "Interesting!", "Oh!"
+- **확인/강조**: "Remember this!", "Pay attention!", "Important!", "Got it?"
+- **전환**: "Next one!", "Let's move on!", "Ready?", "Here we go!"
+
+**TTS 생성**:
+```python
+# OpenAI TTS-1 사용 (Kelly 전용 음성: nova 또는 shimmer)
+interjections = [
+    "Great! Let's learn the next one.",
+    "Perfect! Keep going!",
+    "Wow! That's a useful expression!",
+    "Remember this one, it's important!",
+]
+
+# 문장 사이 랜덤 또는 규칙적 삽입
+for i, sentence in enumerate(sentences):
+    if i % 2 == 1:  # 2문장마다 1번
+        add_kelly_interjection(interjections[i % len(interjections)])
+```
+
+#### 2. 중간 설명 개입 (Mid-Video Commentary)
+
+**타이밍**: 문장 클립 후 (선택적)
+**길이**: 3~5초
+
+**개입 시나리오**:
+
+**A. 발음 팁**:
+- "Notice the /th/ sound in 'this'!"
+- "Be careful with the silent 'k' in 'know'!"
+- "Try emphasizing the first syllable!"
+
+**B. 문화적 맥락**:
+- "Americans use this expression a lot in casual conversations!"
+- "This is more common in British English!"
+- "You'll hear this in movies and TV shows often!"
+
+**C. 사용 주의사항**:
+- "Be careful! This is informal, don't use it in business meetings!"
+- "This expression is quite formal, perfect for presentations!"
+- "This can sound rude if you use the wrong tone!"
+
+**D. 추가 예문**:
+- "For example, you can also say..."
+- "Another way to express this is..."
+- "Try using this with different subjects!"
+
+#### 3. 시각적 개입 (Kelly Pop-up)
+
+**현재**: 인트로/아웃트로에만 Kelly 표시
+**향후**: 중간 개입 시 Kelly 작게 등장
+
+**레이아웃 예시**:
+```
+┌─────────────────────────┐
+│                         │
+│   [Main Content]        │
+│   (English Sentence)    │
+│                         │
+│              ┌────┐     │ ← Kelly 팝업 (우측 하단)
+│              │😊  │     │   "Great!"
+│              └────┘     │
+└─────────────────────────┘
+```
+
+**구현 방법**:
+- Kelly 이미지 축소 (200x200px)
+- 우측 하단 또는 좌측 하단 배치
+- 말풍선 효과 (텍스트 오버레이)
+- 0.5초 FadeIn + 0.5초 FadeOut
+
+#### 4. 인터랙티브 질문 (롱폼 전용)
+
+**타이밍**: 2~3문장마다 1번
+**길이**: 3~5초
+
+**질문 예시**:
+- "Can you repeat after me?"
+- "Do you know when to use this expression?"
+- "Have you heard this phrase before?"
+- "Ready to try using it yourself?"
+
+**시각적 효과**:
+- Kelly 표정 변화 (질문하는 표정)
+- 물음표 아이콘 표시
+- 일시정지 유도 (실제로는 멈추지 않지만 시각적으로 표현)
+
+#### 5. 기술적 구현 방안
+
+**Phase 1: 추임새 오디오만** (간단)
+```python
+# TTS로 추임새 미리 생성 (캐싱)
+interjections_cache = {
+    'great': 'output/resources/audio/kelly/great.mp3',
+    'perfect': 'output/resources/audio/kelly/perfect.mp3',
+    'wow': 'output/resources/audio/kelly/wow.mp3',
+}
+
+# 문장 사이 삽입
+def add_interjection(timeline, interjection_key, position):
+    audio = AudioFileClip(interjections_cache[interjection_key])
+    audio = audio.with_start(position)
+    timeline.append(audio)
+```
+
+**Phase 2: 추임새 + 시각적 팝업**
+```python
+# Kelly 작은 이미지 + 말풍선
+kelly_popup = create_kelly_popup(
+    image_path='kelly_casual_hoodie.png',
+    text='Great!',
+    position='bottom-right',
+    size=(200, 200)
+)
+```
+
+**Phase 3: GPT 기반 동적 생성**
+```python
+# 문장 내용 분석 후 적절한 개입 생성
+def generate_kelly_commentary(sentence, context):
+    prompt = f"""
+    You are Kelly, an English teacher.
+    For this sentence: "{sentence}"
+
+    Generate a SHORT (5-10 words) helpful comment about:
+    - Pronunciation tip
+    - Usage context
+    - Cultural note
+
+    Make it friendly and encouraging!
+    """
+
+    commentary = openai.chat.completions.create(
+        model='gpt-4o-mini',
+        messages=[{'role': 'user', 'content': prompt}],
+        max_tokens=30
+    )
+
+    return commentary.choices[0].message.content
+```
+
+#### 6. 사용자 설정 옵션 (웹 UI)
+
+**설정 패널**:
+```
+□ Kelly 추임새 활성화
+  빈도: ○ 자주 (매 문장)  ● 보통 (2문장마다)  ○ 가끔 (3문장마다)
+
+□ Kelly 중간 설명 활성화
+  타입: ☑ 발음 팁  ☑ 문화적 맥락  □ 사용 주의사항
+
+□ Kelly 시각적 팝업 표시
+  위치: ● 우측 하단  ○ 좌측 하단  ○ 중앙 하단
+```
+
+#### 7. 효과 및 기대 결과
+
+**학습 효과**:
+- ✅ 참여도 증가 (단조로움 감소)
+- ✅ 기억력 향상 (중간 강조로 중요 포인트 각인)
+- ✅ 발음 개선 (즉각적인 발음 팁)
+- ✅ 문화 이해 (실제 사용 맥락 설명)
+
+**YouTube 성과**:
+- ✅ 시청 유지율 향상 (engagement)
+- ✅ 댓글 유도 ("Kelly의 팁이 도움됐어요!")
+- ✅ 브랜딩 강화 (Kelly = 친근한 선생님)
+
+**주의사항**:
+- ⚠️ 과도한 개입은 방해 요소 (적절한 빈도 중요)
+- ⚠️ TTS 음성이 자연스러워야 함 (부자연스러우면 역효과)
+- ⚠️ 비디오 길이 증가 (3분 → 4분으로 늘어날 수 있음)
 
 ---
 
