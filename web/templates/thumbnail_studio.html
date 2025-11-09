@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Thumbnail Studio - Daily English Mecca</title>
+    <link rel="stylesheet" href="/static/css/thumbnail_studio.css">
+</head>
+<body>
+    <!-- 네비게이션 -->
+    <nav class="top-nav">
+        <div class="nav-content">
+            <a href="/" class="back-link">← 비디오 생성기로 돌아가기</a>
+            <h1 class="nav-title">🎬 YouTube Thumbnail Studio</h1>
+        </div>
+    </nav>
+
+    <!-- 메인 컨테이너 -->
+    <div class="container">
+        <!-- 좌측: 입력 & 옵션 -->
+        <aside class="sidebar">
+            <!-- 탭 네비게이션 -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="content">📝 콘텐츠</button>
+                <button class="tab-btn" data-tab="channel">📺 채널</button>
+                <button class="tab-btn" data-tab="style">🎨 스타일</button>
+            </div>
+
+            <!-- 탭 1: 콘텐츠 입력 -->
+            <div class="tab-content active" id="tab-content">
+                <h2>콘텐츠 정보</h2>
+
+                <!-- YouTube URL (선택) -->
+                <div class="form-group">
+                    <label for="youtube-url">
+                        YouTube URL (선택)
+                        <span class="hint">제목/길이 자동 추출</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input
+                            type="url"
+                            id="youtube-url"
+                            placeholder="https://youtube.com/watch?v=..."
+                        >
+                        <button id="btn-analyze-url" class="btn-secondary">
+                            🔍 분석
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 메인 텍스트 (필수) -->
+                <div class="form-group">
+                    <label for="main-text">
+                        메인 텍스트 <span class="required">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="main-text"
+                        placeholder="여행영어 마스터"
+                        required
+                        maxlength="30"
+                    >
+                    <small class="char-count">0/30</small>
+                </div>
+
+                <!-- 서브 텍스트 (선택) -->
+                <div class="form-group">
+                    <label for="subtitle-text">서브 텍스트</label>
+                    <input
+                        type="text"
+                        id="subtitle-text"
+                        placeholder="필수 10문장"
+                        maxlength="40"
+                    >
+                    <small class="char-count">0/40</small>
+                </div>
+
+                <!-- 배지 옵션 -->
+                <div class="form-group">
+                    <label>배지 표시</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="show-sentence-badge">
+                            <span>문장 개수</span>
+                        </label>
+                        <input
+                            type="number"
+                            id="sentence-count"
+                            placeholder="10"
+                            min="1"
+                            max="99"
+                            disabled
+                        >
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="show-duration-badge">
+                            <span>영상 길이</span>
+                        </label>
+                        <input
+                            type="text"
+                            id="video-duration"
+                            placeholder="3:42"
+                            pattern="[0-9]+:[0-5][0-9]"
+                            disabled
+                        >
+                    </div>
+                </div>
+
+                <!-- 참고 이미지 (선택) -->
+                <div class="form-group">
+                    <label for="reference-image">
+                        참고 이미지 (선택)
+                        <span class="hint">GPT-4 Vision으로 분석</span>
+                    </label>
+                    <input
+                        type="file"
+                        id="reference-image"
+                        accept="image/*"
+                    >
+                    <div id="reference-preview" class="image-preview hidden">
+                        <img src="" alt="참고 이미지 미리보기">
+                        <button class="btn-remove">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 탭 2: 채널 프로필 -->
+            <div class="tab-content" id="tab-channel">
+                <h2>채널 프로필</h2>
+
+                <!-- 채널 URL (NEW) -->
+                <div class="form-group">
+                    <label for="channel-url">
+                        YouTube 채널 URL (선택)
+                        <span class="hint">채널 아이콘 자동 추출</span>
+                    </label>
+                    <div class="input-with-button">
+                        <input
+                            type="url"
+                            id="channel-url"
+                            placeholder="https://www.youtube.com/@aion-vibecoding"
+                        >
+                        <button id="btn-analyze-channel" class="btn-secondary">
+                            🔍 분석
+                        </button>
+                    </div>
+                    <div id="channel-icon-preview" class="icon-preview hidden">
+                        <img src="" alt="채널 아이콘">
+                        <span class="icon-name"></span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="channel-name">채널 이름</label>
+                    <input
+                        type="text"
+                        id="channel-name"
+                        value="Daily English Mecca"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label>브랜드 색상</label>
+                    <div class="color-picker-group">
+                        <div class="color-picker">
+                            <label>메인</label>
+                            <input type="color" id="brand-color-primary" value="#FF5733">
+                            <input type="text" class="color-hex" value="#FF5733" readonly>
+                        </div>
+                        <div class="color-picker">
+                            <label>서브</label>
+                            <input type="color" id="brand-color-secondary" value="#3357FF">
+                            <input type="text" class="color-hex" value="#3357FF" readonly>
+                        </div>
+                        <div class="color-picker">
+                            <label>강조</label>
+                            <input type="color" id="brand-color-accent" value="#FFD700">
+                            <input type="text" class="color-hex" value="#FFD700" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-kelly-character" checked>
+                        <span>Kelly 캐릭터 사용</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <button id="btn-save-profile" class="btn-secondary full-width">
+                        💾 프로필 저장
+                    </button>
+                </div>
+            </div>
+
+            <!-- 탭 3: 스타일 선택 -->
+            <div class="tab-content" id="tab-style">
+                <h2>스타일 템플릿</h2>
+
+                <div class="style-grid">
+                    <div class="style-card active" data-style="fire_english">
+                        <div class="style-preview fire-english"></div>
+                        <h3>Fire English</h3>
+                        <p>빨간 헤더 + 큰 텍스트</p>
+                    </div>
+
+                    <div class="style-card" data-style="minimalist">
+                        <div class="style-preview minimalist"></div>
+                        <h3>Minimalist</h3>
+                        <p>심플하고 깔끔</p>
+                    </div>
+
+                    <div class="style-card" data-style="minimalist">
+                        <div class="style-preview minimalist"></div>
+                        <h3>Minimalist</h3>
+                        <p>심플하고 깔끔</p>
+                    </div>
+
+                    <div class="style-card" data-style="bold_bright">
+                        <div class="style-preview bold-bright"></div>
+                        <h3>Bold & Bright</h3>
+                        <p>강렬한 색상</p>
+                    </div>
+                </div>
+
+                <!-- 텍스트 위치 (NEW) -->
+                <div class="form-group">
+                    <label>텍스트 위치</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="text-position" value="left">
+                            <span>왼쪽</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="text-position" value="center" checked>
+                            <span>중앙</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="text-position" value="right">
+                            <span>오른쪽</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 생성 버튼 -->
+            <div class="action-bar">
+                <button id="btn-generate" class="btn-primary full-width">
+                    ✨ 썸네일 생성하기
+                </button>
+            </div>
+        </aside>
+
+        <!-- 우측: 미리보기 & 히스토리 -->
+        <main class="main-content">
+            <!-- 미리보기 영역 -->
+            <section class="preview-section">
+                <h2>미리보기</h2>
+                <div id="thumbnail-preview" class="thumbnail-preview">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🎨</div>
+                        <p>썸네일을 생성하면 여기에 표시됩니다</p>
+                    </div>
+                </div>
+
+                <!-- 재생성 옵션 (썸네일 생성 후 표시) -->
+                <div id="regeneration-options" class="regeneration-options hidden">
+                    <h3>마음에 드시나요?</h3>
+                    <div class="regen-buttons">
+                        <button id="btn-download" class="btn-success">
+                            📥 이대로 다운로드
+                        </button>
+                        <button id="btn-edit-text" class="btn-primary">
+                            ✏️ 텍스트 수정
+                        </button>
+                        <button id="btn-regen-color" class="btn-secondary">
+                            🎨 색상만 바꾸기
+                        </button>
+                        <button id="btn-regen-layout" class="btn-secondary">
+                            📐 레이아웃 바꾸기
+                        </button>
+                        <button id="btn-regen-complete" class="btn-secondary">
+                            🔄 완전히 새로 만들기
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 텍스트 수정 모달 (숨겨진 상태) -->
+                <div id="text-edit-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <h3>📝 텍스트 수정</h3>
+                        <div class="form-group">
+                            <label for="edit-main-text">메인 텍스트</label>
+                            <input type="text" id="edit-main-text" maxlength="30">
+                            <small class="char-count">0/30</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-subtitle-text">서브 텍스트</label>
+                            <input type="text" id="edit-subtitle-text" maxlength="40">
+                            <small class="char-count">0/40</small>
+                        </div>
+                        <div class="modal-actions">
+                            <button id="btn-cancel-edit" class="btn-secondary">취소</button>
+                            <button id="btn-apply-edit" class="btn-primary">적용하기</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 히스토리 영역 -->
+            <section class="history-section">
+                <h2>생성 히스토리 <span class="badge" id="history-count">0</span></h2>
+                <div id="thumbnail-history" class="thumbnail-history">
+                    <p class="empty-state">아직 생성된 썸네일이 없습니다</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p id="loading-message">썸네일 생성 중...</p>
+        </div>
+    </div>
+
+    <!-- 메시지 토스트 -->
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/static/js/thumbnail_studio.js"></script>
+</body>
+</html>
